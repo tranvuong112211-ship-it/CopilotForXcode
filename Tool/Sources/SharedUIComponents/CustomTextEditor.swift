@@ -232,6 +232,13 @@ public extension CustomTextEditor {
         public func textViewDidChangeSelection(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
             
+            // Prevent layout interference during input method composition (Chinese, Japanese, Korean)
+            // when text view is empty, layout calculations on marked text can trigger NSSecureCoding warnings 
+            // which can disrupt composition
+            if textView.hasMarkedText()  {
+                return
+            }
+            
             let editorState = getEditorState(textView: textView)
             view.onTextEditorStateChanged?(editorState)
         }
