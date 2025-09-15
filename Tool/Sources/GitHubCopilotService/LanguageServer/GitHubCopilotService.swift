@@ -733,6 +733,29 @@ public final class GitHubCopilotService:
         }
     }
     
+    @GitHubCopilotSuggestionActor
+    public func listMCPRegistryServers(_ params: MCPRegistryListServersParams) async throws -> MCPRegistryServerList {
+        do {
+            let response = try await sendRequest(
+                GitHubCopilotRequest.MCPRegistryListServers(params: params)
+            )
+            return response
+        } catch {
+            throw error
+        }
+    }
+    
+    @GitHubCopilotSuggestionActor
+    public func getMCPRegistryServer(_ params: MCPRegistryGetServerParams) async throws -> MCPRegistryServerDetail {
+        do {
+            let response = try await sendRequest(
+                GitHubCopilotRequest.MCPRegistryGetServer(params: params)
+            )
+            return response
+        } catch {
+            throw error
+        }
+    }
 
     @GitHubCopilotSuggestionActor
     public func rateConversation(turnId: String, rating: ConversationRating) async throws {

@@ -29,12 +29,13 @@ struct UserMessage: View {
                 avatarImage
                     .resizable()
                     .aspectRatio(contentMode: .fill)
-                    .frame(width: 24, height: 24)
+                    .scaledFrame(width: 24, height: 24)
                     .clipShape(Circle())
             } else {
                 Image(systemName: "person.circle")
                     .resizable()
-                    .frame(width: 24, height: 24)
+                    .scaledToFit()
+                    .scaledFrame(width: 24, height: 24)
             }
         }
     }
@@ -54,7 +55,7 @@ struct UserMessage: View {
                     AvatarView()
 
                     Text(statusObserver.authStatus.username ?? "")
-                        .chatMessageHeaderTextStyle()
+                        .scaledFont(size: 13, weight: .semibold)
                         .padding(2)
                     
                     Spacer()

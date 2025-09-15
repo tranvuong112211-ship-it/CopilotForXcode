@@ -1,5 +1,6 @@
 import SwiftUI
 import ConversationServiceProvider
+import SharedUIComponents
 
 struct ReviewSummarySection: View {
     var round: CodeReviewRound
@@ -8,7 +9,7 @@ struct ReviewSummarySection: View {
     var body: some View {
         if round.status == .error, let errorMessage = round.error {
             Text(errorMessage)
-                .font(.system(size: chatFontSize))
+                .scaledFont(size: chatFontSize)
         } else if round.status == .completed, let request = round.request, let response = round.response {
             CompletedSummary(request: request, response: response)
         } else {
@@ -39,6 +40,6 @@ struct CompletedSummary: View {
             }
             
         }
-        .font(.system(size: chatFontSize))
+        .scaledFont(size: chatFontSize)
     }
 }

@@ -81,9 +81,12 @@ struct BotMessage: View {
                 }, label: {
                     HStack(spacing: 4) {
                         Image(systemName: isReferencesPresented ? "chevron.down" : "chevron.right")
+                            .resizable()
+                            .scaledToFit()
+                            .scaledFrame(width: 14, height: 14)
                             
                         Text(MakeReferenceTitle(references: references))
-                            .font(.system(size: chatFontSize))
+                            .scaledFont(size: chatFontSize)
                     }
                     .background {
                         RoundedRectangle(cornerRadius: r - 4)
@@ -113,7 +116,7 @@ struct BotMessage: View {
                 .scaleEffect(0.7)
             
             Text("Working...")
-                .font(.system(size: chatFontSize))
+                .scaledFont(size: chatFontSize)
                 .foregroundColor(.secondary)
         }
     }
@@ -186,16 +189,19 @@ struct BotMessage: View {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(text, forType: .string)
                 }
+                .scaledFont(.body)
                 
                 Button("Set as Extra System Prompt") {
                     chat.send(.setAsExtraPromptButtonTapped(id))
                 }
+                .scaledFont(.body)
                 
                 Divider()
                 
                 Button("Delete") {
                     chat.send(.deleteMessageButtonTapped(id))
                 }
+                .scaledFont(.body)
             }
         }
     }
@@ -256,12 +262,12 @@ struct ReferenceList: View {
                                 drawFileIcon(reference.url, isDirectory: reference.isDirectory)
                                     .resizable()
                                     .scaledToFit()
-                                    .frame(width: 16, height: 16)
+                                    .scaledFrame(width: 16, height: 16)
                                 Text(reference.fileName)
                                     .truncationMode(.middle)
                                     .lineLimit(1)
                                     .layoutPriority(1)
-                                    .font(.system(size: chatFontSize))
+                                    .scaledFont(size: chatFontSize)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }

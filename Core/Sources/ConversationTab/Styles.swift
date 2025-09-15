@@ -183,10 +183,6 @@ struct RoundedCorners: Shape {
 
 // Chat Message Styles
 extension View {
-    func chatMessageHeaderTextStyle() -> some View {
-        // semibold -> 600
-        font(.system(size: 13, weight: .semibold))
-    }
     
     func chatContextReferenceStyle(isCurrentEditor: Bool, r: Double) -> some View {
         background(

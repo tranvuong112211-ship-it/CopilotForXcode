@@ -308,6 +308,54 @@ public class XPCService: NSObject, XPCServiceProtocol {
         }
     }
     
+    // MARK: - MCP Registry
+    
+    public func listMCPRegistryServers(_ params: Data, withReply reply: @escaping (Data?, Error?) -> Void) {
+        let decoder = JSONDecoder()
+        var listMCPRegistryServersParams: MCPRegistryListServersParams?
+        do {
+            listMCPRegistryServersParams = try decoder.decode(MCPRegistryListServersParams.self, from: params)
+        } catch {
+            Logger.service.error("Failed to decode MCP Registry list servers parameters: \(error)")
+            return
+        }
+        
+        Task { @MainActor in
+            do {
+                let service = try GitHubCopilotViewModel.shared.getGitHubCopilotAuthService()
+                let response = try await service.listMCPRegistryServers(listMCPRegistryServersParams!)
+                let data = try? JSONEncoder().encode(response)
+                reply(data, nil)
+            } catch {
+                Logger.service.error("Failed to list MCP Registry servers: \(error)")
+                reply(nil, error)
+            }
+        }
+    }
+    
+    public func getMCPRegistryServer(_ params: Data, withReply reply: @escaping (Data?, Error?) -> Void) {
+        let decoder = JSONDecoder()
+        var getMCPRegistryServerParams: MCPRegistryGetServerParams?
+        do {
+            getMCPRegistryServerParams = try decoder.decode(MCPRegistryGetServerParams.self, from: params)
+        } catch {
+            Logger.service.error("Failed to decode MCP Registry get server parameters: \(error)")
+            return
+        }
+        
+        Task { @MainActor in
+            do {
+                let service = try GitHubCopilotViewModel.shared.getGitHubCopilotAuthService()
+                let response = try await service.getMCPRegistryServer(getMCPRegistryServerParams!)
+                let data = try? JSONEncoder().encode(response)
+                reply(data, nil)
+            } catch {
+                Logger.service.error("Failed to get MCP Registry servers: \(error)")
+                reply(nil, error)
+            }
+        }
+    }
+    
     // MARK: - FeatureFlags
     public func getCopilotFeatureFlags(
         withReply reply: @escaping (Data?) -> Void

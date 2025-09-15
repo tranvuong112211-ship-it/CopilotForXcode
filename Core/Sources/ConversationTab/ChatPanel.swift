@@ -271,6 +271,7 @@ struct ChatPanelMessages: View {
             }
         }) {
             Image(systemName: "chevron.down")
+                .scaledFrame(width: 14, height: 14)
                 .padding(8)
                 .background {
                     Circle()
@@ -420,10 +421,11 @@ struct ChatFollowUp: View {
                     }) {
                         HStack(spacing: 4) {
                             Image(systemName: "sparkles")
+                                .scaledFont(.body)
                                 .foregroundColor(.blue)
                             
                             Text(followUp.message)
-                                .font(.system(size: chatFontSize))
+                                .scaledFont(size: chatFontSize)
                                 .foregroundColor(.blue)
                         }
                     }
@@ -490,8 +492,10 @@ struct ChatPanelInputArea: View {
             Group {
                 if #available(macOS 13.0, *) {
                     Image(systemName: "eraser.line.dashed.fill")
+                        .scaledFont(.body)
                 } else {
                     Image(systemName: "trash.fill")
+                        .scaledFont(.body)
                 }
             }
             .padding(6)
@@ -526,6 +530,12 @@ struct ChatPanelInputArea: View {
         @ObservedObject private var status: StatusObserver = .shared
         @State private var isCCRFFEnabled: Bool
         @State private var cancellables = Set<AnyCancellable>()
+        
+        @StateObject private var fontScaleManager = FontScaleManager.shared
+        
+        var fontScale: Double {
+            fontScaleManager.currentScale
+        }
         
         init(
             chat: StoreOf<Chat>,
@@ -588,7 +598,7 @@ struct ChatPanelInputArea: View {
                                 Text("Edit files in your workspace in agent mode") :
                                 Text("Ask Copilot or type / for commands")
                             }
-                            .font(.system(size: 14))
+                            .scaledFont(size: 14)
                             .foregroundColor(Color(nsColor: .placeholderTextColor))
                             .padding(8)
                             .padding(.horizontal, 4)
@@ -597,7 +607,7 @@ struct ChatPanelInputArea: View {
                         HStack(spacing: 0) {
                             AutoresizingCustomTextEditor(
                                 text: $chat.typedMessage,
-                                font: .systemFont(ofSize: 14),
+                                font: .systemFont(ofSize: 14 * fontScale),
                                 isEditable: true,
                                 maxHeight: 400,
                                 onSubmit: {
@@ -750,6 +760,7 @@ struct ChatPanelInputArea: View {
                 submitChatMessage()
             }) {
                 Image(systemName: "paperplane.fill")
+                    .scaledFont(.body)
                     .padding(4)
             }
             .keyboardShortcut(KeyEquivalent.return, modifiers: [])
@@ -761,6 +772,7 @@ struct ChatPanelInputArea: View {
                 chat.send(.stopRespondingButtonTapped)
             }) {
                 Image(systemName: "stop.circle")
+                    .scaledFont(.body)
                     .padding(4)
             }
         }
@@ -781,6 +793,9 @@ struct ChatPanelInputArea: View {
         
         var codeReviewIcon: some View {
             Image("codeReview")
+                .resizable()
+                .scaledToFit()
+                .scaledFrame(width: 14, height: 14)
                 .padding(6)
         }
         
@@ -809,6 +824,7 @@ struct ChatPanelInputArea: View {
                         } label: {
                             codeReviewIcon
                         }
+                        .scaledFont(.body)
                         .opacity(isRequestingCodeReview ? 0 : 1)
                         .help("Code Review")
                     }
@@ -882,14 +898,14 @@ struct ChatPanelInputArea: View {
                                     focusedField.wrappedValue = .textField
                                 }
                             }
-                        }) {
+                        }) {    
                             Image(systemName: "paperclip")
                                 .resizable()
                                 .aspectRatio(contentMode: .fill)
-                                .frame(width: 16, height: 16)
-                                .padding(4)
+                                .scaledFrame(width: 16, height: 16)
+                                .scaledPadding(4)
                                 .foregroundColor(.primary.opacity(0.85))
-                                .font(Font.system(size: 11, weight: .semibold))
+                                .scaledFont(size: 11, weight: .semibold)
                         }
                         .buttonStyle(HoverButtonStyle(padding: 0))
                         .help("Add Context")
@@ -929,7 +945,7 @@ struct ChatPanelInputArea: View {
                 Button(action: { chat.send(.removeReference(ref)) }) {
                     Image(systemName: "xmark")
                         .resizable()
-                        .frame(width: 8, height: 8)
+                        .scaledFrame(width: 8, height: 8)
                         .foregroundColor(.primary.opacity(0.85))
                         .padding(4)
                 }
@@ -948,7 +964,7 @@ struct ChatPanelInputArea: View {
             drawFileIcon(url, isDirectory: isDirectory)
                 .resizable()
                 .scaledToFit()
-                .frame(width: 16, height: 16)
+                .scaledFrame(width: 16, height: 16)
                 .foregroundColor(.primary.opacity(0.85))
                 .padding(4)
                 .opacity(isCurrentEditor && !isCurrentEditorContextEnabled ? 0.4 : 1.0)
@@ -976,7 +992,7 @@ struct ChatPanelInputArea: View {
                     ? .secondary
                     : .primary.opacity(0.85)
                 )
-                .font(.body)
+                .scaledFont(.body)
                 .opacity(isCurrentEditor && !isCurrentEditorContextEnabled ? 0.4 : 1.0)
                 .help(url.getPathRelativeToHome())
         }

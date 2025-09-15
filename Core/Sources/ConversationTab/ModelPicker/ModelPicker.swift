@@ -24,6 +24,12 @@ struct ModelPicker: View {
     
     @State var isMCPFFEnabled: Bool
     @State private var cancellables = Set<AnyCancellable>()
+    
+    @StateObject private var fontScaleManager = FontScaleManager.shared
+    
+    var fontScale: Double {
+        fontScaleManager.currentScale
+    }
 
     let minimumPadding: Int = 48
     let attributes: [NSAttributedString.Key: NSFont] = [.font: NSFont.systemFont(ofSize: NSFont.systemFontSize)]
@@ -186,7 +192,7 @@ struct ModelPicker: View {
     
     // Model picker menu component
     private var modelPickerMenu: some View {
-        Menu(selectedModel?.displayName ?? selectedModel?.modelName ?? "") {
+        Menu {
             // Group models by premium status
             let premiumModels = copilotModels.filter {
                 $0.billing?.isPremium == true
@@ -211,10 +217,14 @@ struct ModelPicker: View {
             if standardModels.isEmpty {
                 Link("Add Premium Models", destination: URL(string: "https://aka.ms/github-copilot-upgrade-plan")!)
             }
+        } label: {
+            Text(selectedModel?.displayName ?? selectedModel?.modelName ?? "")
+                // scaledFont not work here. workaround by direclty use the fontScale
+                .font(.system(size: 13 * fontScale))
         }
         .menuStyle(BorderlessButtonMenuStyle())
         .frame(maxWidth: labelWidth())
-        .padding(4)
+        .scaledPadding(4)
         .background(
             RoundedRectangle(cornerRadius: 5)
                 .fill(isHovered ? Color.gray.opacity(0.1) : Color.clear)
@@ -253,7 +263,7 @@ struct ModelPicker: View {
         Group {
             if isMCPFFEnabled {
                 Button(action: {
-                    try? launchHostAppMCPSettings()
+                    try? launchHostAppToolsSettings()
                 }) {
                     mcpIcon.foregroundColor(.primary.opacity(0.85))
                 }
@@ -273,7 +283,7 @@ struct ModelPicker: View {
         Image(systemName: "wrench.and.screwdriver")
             .resizable()
             .scaledToFit()
-            .frame(width: 16, height: 16)
+            .scaledFrame(width: 16, height: 16)
             .padding(4)
             .font(Font.system(size: 11, weight: .semibold))
     }
@@ -347,7 +357,7 @@ struct ModelPicker: View {
         let width = displayName.size(
             withAttributes: attributes
         ).width
-        return CGFloat(width + 20)
+        return CGFloat(width * fontScale + 20)
     }
 
     @MainActor

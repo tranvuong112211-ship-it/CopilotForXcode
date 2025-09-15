@@ -5,6 +5,7 @@ import ChatService
 import ComposableArchitecture
 import SuggestionBasic
 import ChatTab
+import SharedUIComponents
 
 public struct MarkdownActionProvider {
     let supportInsert: Bool
@@ -23,8 +24,21 @@ public struct ThemedMarkdownText: View {
     @AppStorage(\.codeForegroundColorDark) var codeForegroundColorDark
     @AppStorage(\.codeBackgroundColorDark) var codeBackgroundColorDark
     @AppStorage(\.chatFontSize) var chatFontSize
-    @AppStorage(\.chatCodeFont) var chatCodeFont
     @Environment(\.colorScheme) var colorScheme
+    
+    @StateObject private var fontScaleManager = FontScaleManager.shared
+    
+    var fontScale: Double {
+        fontScaleManager.currentScale
+    }
+    
+    var scaledChatCodeFont: NSFont {
+        .monospacedSystemFont(ofSize: 12 * fontScale, weight: .regular)
+    }
+    
+    var scaledChatFontSize: CGFloat {
+        chatFontSize * fontScale
+    }
 
     let text: String
     let context: MarkdownActionProvider
@@ -46,8 +60,8 @@ public struct ThemedMarkdownText: View {
         Markdown(text)
             .textSelection(.enabled)
             .markdownTheme(.custom(
-                fontSize: chatFontSize,
-                codeFont: chatCodeFont.value.nsFont,
+                fontSize: scaledChatFontSize,
+                codeFont: scaledChatCodeFont,
                 codeBlockBackgroundColor: {
                     if syncCodeHighlightTheme {
                         if colorScheme == .light, let color = codeBackgroundColorLight.value {
@@ -126,6 +140,8 @@ struct MarkdownCodeBlockView: View {
                 labelColor: codeBlockLabelColor,
                 context: context
             )
+            // Force recreation when font size changes
+            .id("code-block-\(codeFont.pointSize)")
         } else {
             ScrollView(.horizontal) {
                 AsyncCodeBlockView(
@@ -142,6 +158,8 @@ struct MarkdownCodeBlockView: View {
                 labelColor: codeBlockLabelColor,
                 context: context
             )
+            // Force recreation when font size changes
+            .id("code-block-\(codeFont.pointSize)")
         }
     }
 }

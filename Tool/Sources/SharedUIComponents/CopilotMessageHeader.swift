@@ -12,18 +12,17 @@ public struct CopilotMessageHeader: View {
             ZStack {
                 Circle()
                     .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
-                    .frame(width: 24, height: 24)
+                    .scaledFrame(width: 24, height: 24)
                 
                 Image("CopilotLogo")
                     .resizable()
                     .renderingMode(.template)
                     .scaledToFit()
-                    .frame(width: 12, height: 12)
+                    .scaledFrame(width: 14, height: 14)
             }
             
             Text("GitHub Copilot")
-                .font(.system(size: 13))
-                .fontWeight(.semibold)
+                .scaledFont(.system(size: 13, weight: .semibold))
                 .padding(.leading, 4)
                 
             Spacer()

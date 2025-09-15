@@ -403,6 +403,32 @@ enum GitHubCopilotRequest {
         }
     }
     
+    // MARK: MCP Registry
+    
+    struct MCPRegistryListServers: GitHubCopilotRequestType {
+        typealias Response = MCPRegistryServerList
+        
+        var params: MCPRegistryListServersParams
+        
+        var request: ClientRequest {
+            let data = (try? JSONEncoder().encode(params)) ?? Data()
+            let dict = (try? JSONDecoder().decode(JSONValue.self, from: data)) ?? .hash([:])
+            return .custom("mcp/registry/listServers", dict, ClientRequest.NullHandler)
+        }
+    }
+    
+    struct MCPRegistryGetServer: GitHubCopilotRequestType {
+        typealias Response = MCPRegistryServerDetail
+        
+        var params: MCPRegistryGetServerParams
+        
+        var request: ClientRequest {
+            let data = (try? JSONEncoder().encode(params)) ?? Data()
+            let dict = (try? JSONDecoder().decode(JSONValue.self, from: data)) ?? .hash([:])
+            return .custom("mcp/registry/getServer", dict, ClientRequest.NullHandler)
+        }
+    }
+    
     // MARK: - Conversation Agents
     
     struct GetAgents: GitHubCopilotRequestType {

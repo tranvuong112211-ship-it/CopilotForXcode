@@ -13,6 +13,7 @@ public struct FilePicker: View {
     @State private var searchText = ""
     @State private var selectedId: Int = 0
     @State private var localMonitor: Any? = nil
+    @AppStorage(\.chatFontSize) var chatFontSize
     
     // Only showup direct sub directories
     private var defaultReferencesForDisplay: [ConversationAttachedReference]? {
@@ -76,6 +77,7 @@ public struct FilePicker: View {
                         .foregroundColor(.secondary)
 
                     TextField("Search files...", text: $searchText)
+                        .scaledFont(.body)
                         .textFieldStyle(PlainTextFieldStyle())
                         .foregroundColor(searchText.isEmpty ? Color(nsColor: .placeholderTextColor) : Color(nsColor: .textColor))
                         .focused($isSearchBarFocused)
@@ -92,6 +94,7 @@ public struct FilePicker: View {
                         }
                     }) {
                         Image(systemName: "xmark.circle.fill")
+                            .scaledFont(.body)
                             .foregroundColor(.secondary)
                     }
                     .buttonStyle(HoverButtonStyle())
@@ -205,20 +208,20 @@ struct FileRowView: View {
                 drawFileIcon(ref.url, isDirectory: ref.isDirectory)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 16, height: 16)
+                    .scaledFrame(width: 16, height: 16)
                     .hoverSecondaryForeground(isHovered: selectedId == id)
                     .padding(.leading, 4)
                 
                 HStack(spacing: 4) {
                     Text(ref.displayName)
-                        .font(.body)
+                        .scaledFont(.body)
                         .hoverPrimaryForeground(isHovered: selectedId == id)
                         .lineLimit(1)
                         .truncationMode(.middle)
                         .layoutPriority(1)
                     
                     Text(ref.relativePath)
-                        .font(.caption)
+                        .scaledFont(.caption)
                         .hoverSecondaryForeground(isHovered: selectedId == id)
                         .lineLimit(1)
                         .truncationMode(.middle)

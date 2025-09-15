@@ -10,14 +10,14 @@ extension KeyboardShortcuts.Name {
 public enum TabIndex: Int, CaseIterable {
     case general = 0
     case advanced = 1
-    case mcp = 2
+    case tools = 2
     case byok = 3
     
     var title: String {
         switch self {
         case .general: return "General"
         case .advanced: return "Advanced"
-        case .mcp: return "MCP"
+        case .tools: return "Tools"
         case .byok: return "Models"
         }
     }
@@ -26,7 +26,7 @@ public enum TabIndex: Int, CaseIterable {
         switch self {
         case .general: return "CopilotLogo"
         case .advanced: return "gearshape.2.fill"
-        case .mcp: return "wrench.and.screwdriver.fill"
+        case .tools: return "wrench.and.screwdriver.fill"
         case .byok: return "Model"
         }
     }

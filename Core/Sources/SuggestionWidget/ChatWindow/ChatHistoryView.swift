@@ -42,7 +42,7 @@ struct ChatHistoryView: View {
         var body: some View {
             HStack {
                 Text("Chat History")
-                    .font(.system(size: 13, weight: .bold))
+                    .scaledFont(.system(size: 13, weight: .bold))
                     .lineLimit(nil)
                 
                 Spacer()
@@ -51,6 +51,7 @@ struct ChatHistoryView: View {
                     isChatHistoryVisible = false
                 }) {
                     Image(systemName: "xmark")
+                        .scaledFont(.body)
                 }
                 .buttonStyle(HoverButtonStyle())
                 .help("Close")
@@ -123,8 +124,10 @@ struct ChatHistorySearchBarView: View {
         HStack(spacing: 5) {
             Image(systemName: "magnifyingglass")
                 .foregroundColor(.secondary)
+                .scaledFont(.body)
             
             TextField("Search", text: $searchText)
+                .scaledFont(.body)
                 .textFieldStyle(PlainTextFieldStyle())
                 .focused($isSearchBarFocused)
                 .foregroundColor(searchText.isEmpty ? Color(nsColor: .placeholderTextColor) : Color(nsColor: .textColor))
@@ -171,7 +174,7 @@ struct ChatHistoryItemView: View {
                             // directly get title from chat tab info
                             Text(previewInfo.title ?? "New Chat")
                                 .frame(alignment: .leading)
-                                .font(.system(size: 14, weight: .semibold))
+                                .scaledFont(.system(size: 14, weight: .semibold))
                                 .foregroundColor(.primary)
                                 .lineLimit(1)
                             
@@ -186,7 +189,7 @@ struct ChatHistoryItemView: View {
                         HStack(spacing: 0) {
                             Text(formatDate(previewInfo.updatedAt))
                                 .frame(alignment: .leading)
-                                .font(.system(size: 13, weight: .regular))
+                                .scaledFont(.system(size: 13, weight: .regular))
                                 .foregroundColor(.secondary)
                                 .lineLimit(1)
                             
@@ -205,6 +208,7 @@ struct ChatHistoryItemView: View {
                         }) {
                             Image(systemName: "trash")
                                 .foregroundColor(.primary)
+                                .scaledFont(.body)
                                 .opacity(isHovered ? 1 : 0)
                         }
                         .buttonStyle(HoverButtonStyle())

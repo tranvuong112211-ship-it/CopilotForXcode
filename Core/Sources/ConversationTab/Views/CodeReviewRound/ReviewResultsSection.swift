@@ -60,7 +60,7 @@ private struct ReviewResultsHeader: View {
     var body: some View {
         HStack(spacing: 4) {
             Text("Reviewed Changes")
-                .font(.system(size: chatFontSize))
+                .scaledFont(size: chatFontSize)
             
             Spacer()
         }
@@ -80,7 +80,8 @@ private struct ExpandReviewsButton: View {
             } label: {
                 Image("chevron.down")
                     .resizable()
-                    .frame(width: 16, height: 16)
+                    .scaledToFit()
+                    .scaledFrame(width: 16, height: 16)
             }
             .buttonStyle(PlainButtonStyle())
             
@@ -149,7 +150,8 @@ private struct ReviewResultRowContent: View {
         HStack(spacing: 4) {
             drawFileIcon(fileURL)
                 .resizable()
-                .frame(width: 16, height: 16)
+                .scaledToFit()
+                .scaledFrame(width: 16, height: 16)
             
             Button(action: {
                 if hasComments {
@@ -157,7 +159,7 @@ private struct ReviewResultRowContent: View {
                 }
             }) {
                 Text(fileURL.lastPathComponent)
-                    .font(.system(size: chatFontSize))
+                    .scaledFont(.system(size: chatFontSize))
                     .foregroundColor(isHovered ? Color("ItemSelectedColor") : .primary)
             }
             .buttonStyle(PlainButtonStyle())
@@ -172,7 +174,7 @@ private struct ReviewResultRowContent: View {
             }
 
             Text(commentCountText)
-                .font(.system(size: chatFontSize - 1))
+                .scaledFont(size: chatFontSize - 1)
                 .lineSpacing(20)
                 .foregroundColor(.secondary)
             

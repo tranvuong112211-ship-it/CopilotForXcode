@@ -7,23 +7,26 @@ public enum CheckboxMixedState {
 
 public struct MixedStateCheckbox: View {
     let title: String
+    let font: NSFont
     let action: () -> Void
     
     @Binding var state: CheckboxMixedState
     
-    public init(title: String, state: Binding<CheckboxMixedState>, action: @escaping () -> Void) {
+    public init(title: String, font: NSFont, state: Binding<CheckboxMixedState>, action: @escaping () -> Void) {
         self.title = title
+        self.font = font
         self.action = action
         self._state = state
     }
     
     public var body: some View {
-        MixedStateCheckboxView(title: title, state: state, action: action)
+        MixedStateCheckboxView(title: title, font: font, state: state, action: action)
     }
 }
 
 private struct MixedStateCheckboxView: NSViewRepresentable {
     let title: String
+    let font: NSFont
     let state: CheckboxMixedState
     let action: () -> Void
     
@@ -32,6 +35,7 @@ private struct MixedStateCheckboxView: NSViewRepresentable {
         button.setButtonType(.switch)
         button.allowsMixedState = true
         button.title = title
+        button.font = font
         button.target = context.coordinator
         button.action = #selector(Coordinator.onButtonClicked)
         button.setContentHuggingPriority(.required, for: .horizontal)
@@ -56,6 +60,10 @@ private struct MixedStateCheckboxView: NSViewRepresentable {
     }
     
     func updateNSView(_ nsView: NSButton, context: Context) {
+        if nsView.font != font {
+            nsView.font = font
+        }
+        
         nsView.title = title
         
         switch state {

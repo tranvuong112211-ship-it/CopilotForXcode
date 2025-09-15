@@ -3,6 +3,7 @@ import Persist
 import ConversationServiceProvider
 import GitHubCopilotService
 import Combine
+import SharedUIComponents
 
 public extension Notification.Name {
     static let gitHubCopilotChatModeDidChange = Notification
@@ -70,8 +71,8 @@ public struct ChatModePicker: View {
                         }
                     )
                 }
-                .padding(1)
-                .frame(height: 20, alignment: .topLeading)
+                .scaledPadding(1)
+                .scaledFrame(height: 20, alignment: .topLeading)
                 .background(.primary.opacity(0.1))
                 .cornerRadius(5)
                 .padding(4)

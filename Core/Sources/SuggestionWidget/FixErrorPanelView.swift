@@ -21,6 +21,7 @@ struct FixErrorPanelView: View {
     let store: StoreOf<FixErrorPanelFeature>
     
     @State private var showFailurePopover = false
+    @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
         WithViewStore(self.store, observe: ViewState.init) { viewStore in 
@@ -49,7 +50,7 @@ struct FixErrorPanelView: View {
         let annotations = viewStore.errorAnnotationsAtCursorPosition
         let rect = annotations.first(where:  { $0.rect != nil })?.rect ?? nil
         let annotationHeight = rect?.height ?? 16
-        let iconSize = annotationHeight * 0.8
+        let iconSize = annotationHeight * 0.7
         
         Group {
             if !annotations.isEmpty {
@@ -61,8 +62,14 @@ struct FixErrorPanelView: View {
                             .resizable()
                             .scaledToFit()
                             .frame(width: iconSize, height: iconSize)
+                            .padding((annotationHeight - iconSize) / 2)
+                            .foregroundColor(.white)
                     }
                     .buttonStyle(.plain)
+                    .background(
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(Color("FixErrorBackgroundColor").opacity(0.8))
+                    )
                 }
             } else {
                 Color.clear

@@ -1,7 +1,14 @@
 import AppKit
 import XcodeInspector
+import Preferences
 
 extension WidgetWindowsController {
+    
+    @MainActor
+    var isFixErrorEnabled: Bool {
+        UserDefaults.shared.value(for: \.enableFixError)
+    }
+    
     @MainActor
     func hideFixErrorWindow() {
         windows.fixErrorPanelWindow.alphaValue = 0
@@ -16,27 +23,36 @@ extension WidgetWindowsController {
     }
     
     func setupFixErrorPanelObservers() {
-        store.publisher
-            .map(\.fixErrorPanelState.errorAnnotations)
-            .removeDuplicates()
-            .sink { [weak self] _ in 
-                Task { @MainActor [weak self] in 
-                    await self?.updateFixErrorPanelWindowLocation()
+        Task { @MainActor in 
+            let errorAnnotationsPublisher = store.publisher
+                .map(\.fixErrorPanelState.errorAnnotationsAtCursorPosition)
+                .removeDuplicates()
+                .sink { [weak self] _ in 
+                    Task { [weak self] in 
+                        await self?.updateFixErrorPanelWindowLocation()
+                    }
                 }
-            }.store(in: &cancellable)
-        
-        store.publisher
-            .map(\.fixErrorPanelState.isPanelDisplayed)
-            .removeDuplicates()
-            .sink { [weak self ] _ in
-                Task { @MainActor [weak self] in 
-                    await self?.updateFixErrorPanelWindowLocation()
+            
+            let isPanelDisplayedPublisher = store.publisher
+                .map(\.fixErrorPanelState.isPanelDisplayed)
+                .removeDuplicates()
+                .sink { [weak self ] _ in
+                    Task { [weak self] in 
+                        await self?.updateFixErrorPanelWindowLocation()
+                    }
                 }
-            }.store(in: &cancellable)
+            
+            await self.storeCancellables([errorAnnotationsPublisher, isPanelDisplayedPublisher])
+        }
     }
     
     @MainActor
     func updateFixErrorPanelWindowLocation() async {
+        guard isFixErrorEnabled else {
+            hideFixErrorWindow()
+            return
+        }
+        
         guard let activeApp = await XcodeInspector.shared.safe.activeApplication,
               (activeApp.isXcode || activeApp.isCopilotForXcodeExtensionService)
         else {
@@ -69,12 +85,17 @@ extension WidgetWindowsController {
         // Locate the window to the middle in Y
         fixErrorPanelWindowFrame.origin.y = screen.frame.maxY - annotationRect.minY - annotationRect.height / 2 - fixErrorPanelWindowFrame.height / 2 + screen.frame.minY
         
-        windows.fixErrorPanelWindow.setFrame(fixErrorPanelWindowFrame, display: true, animate: true)
+        windows.fixErrorPanelWindow.setFrame(fixErrorPanelWindowFrame, display: true, animate: false)
         displayFixErrorWindow()
     }
     
     @MainActor
     func handleFixErrorEditorNotification(notification: SourceEditor.AXNotification) async {
+        guard isFixErrorEnabled else {
+            hideFixErrorWindow()
+            return
+        }
+        
         switch notification.kind {
         case .scrollPositionChanged:
             store.send(.fixErrorPanel(.onScrollPositionChanged))
@@ -85,7 +106,5 @@ extension WidgetWindowsController {
         default:
             break
         }
-        
-        await updateFixErrorPanelWindowLocation()
     }
 }

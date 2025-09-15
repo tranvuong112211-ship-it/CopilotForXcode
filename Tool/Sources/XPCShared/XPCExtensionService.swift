@@ -357,6 +357,8 @@ extension XPCExtensionService {
             }
         }
     }
+    
+    // MARK: MCP Server Tools
 
     @XPCServiceActor
     public func getAvailableMCPServerToolsCollections() async throws -> [MCPServerToolsCollection]? {
@@ -386,6 +388,68 @@ extension XPCExtensionService {
                 let data = try JSONEncoder().encode(update)
                 service.updateMCPServerToolsStatus(tools: data)
                 continuation.resume(())
+            } catch {
+                continuation.reject(error)
+            }
+        }
+    }
+    
+    // MARK: MCP Registry
+    
+    @XPCServiceActor
+    public func listMCPRegistryServers(_ params: MCPRegistryListServersParams) async throws -> MCPRegistryServerList? {
+        return try await withXPCServiceConnected {
+            service, continuation in
+            do {
+                let params = try JSONEncoder().encode(params)
+                service.listMCPRegistryServers(params) { data, error in
+                    if let error {
+                        continuation.reject(error)
+                        return
+                    }
+
+                    guard let data else {
+                        continuation.resume(nil)
+                        return
+                    }
+
+                    do {
+                        let response = try JSONDecoder().decode(MCPRegistryServerList.self, from: data)
+                        continuation.resume(response)
+                    } catch {
+                        continuation.reject(error)
+                    }
+                }
+            } catch {
+                continuation.reject(error)
+            }
+        }
+    }
+    
+    @XPCServiceActor
+    public func getMCPRegistryServer(_ params: MCPRegistryGetServerParams) async throws -> MCPRegistryServerDetail? {
+        return try await withXPCServiceConnected {
+            service, continuation in
+            do {
+                let params = try JSONEncoder().encode(params)
+                service.getMCPRegistryServer(params) { data, error in
+                    if let error {
+                        continuation.reject(error)
+                        return
+                    }
+
+                    guard let data else {
+                        continuation.resume(nil)
+                        return
+                    }
+
+                    do {
+                        let response = try JSONDecoder().decode(MCPRegistryServerDetail.self, from: data)
+                        continuation.resume(response)
+                    } catch {
+                        continuation.reject(error)
+                    }
+                }
             } catch {
                 continuation.reject(error)
             }

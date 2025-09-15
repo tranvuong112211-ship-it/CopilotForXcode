@@ -42,7 +42,7 @@ public struct TabContainer: View {
             let service = try getService()
             let featureFlags = try await service.getCopilotFeatureFlags()
             isAgentModeFFEnabled = featureFlags?.agentMode ?? true
-            if hostAppStore.state.activeTabIndex == .mcp && !isAgentModeFFEnabled {
+            if hostAppStore.state.activeTabIndex == .tools && !isAgentModeFFEnabled {
                 hostAppStore.send(.setActiveTab(.general))
             }
         } catch {
@@ -59,7 +59,7 @@ public struct TabContainer: View {
                     GeneralView(store: store.scope(state: \.general, action: \.general)).tabBarItem(for: .general)
                     AdvancedSettings().tabBarItem(for: .advanced)
                     if isAgentModeFFEnabled {
-                        MCPConfigView().tabBarItem(for: .mcp)
+                        MCPConfigView().tabBarItem(for: .tools)
                     }
                     BYOKConfigView().tabBarItem(for: .byok)
                 }
@@ -68,7 +68,6 @@ public struct TabContainer: View {
             }
             .focusable(false)
             .padding(.top, 8)
-            .background(.ultraThinMaterial.opacity(0.01))
             .background(Color(nsColor: .controlBackgroundColor))
             .handleToast()
             .onPreferenceChange(TabBarItemPreferenceKey.self) { items in

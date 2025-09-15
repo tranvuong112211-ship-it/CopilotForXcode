@@ -3,26 +3,14 @@ import ComposableArchitecture
 import SwiftUI
 import Toast
 import XcodeInspector
+import SharedUIComponents
 
 struct ChatSection: View {
     @AppStorage(\.autoAttachChatToXcode) var autoAttachChatToXcode
+    @AppStorage(\.enableFixError) var enableFixError
 
     var body: some View {
         SettingsSection(title: "Chat Settings") {
-            // Auto Attach toggle
-            SettingsToggle(
-                title: "Auto-attach Chat Window to Xcode",
-                isOn: $autoAttachChatToXcode
-            )
-
-            Divider()
-
-            // Response language picker
-            ResponseLanguageSetting()
-                .padding(SettingsToggle.defaultPadding)
-
-            Divider()
-
             // Copilot instructions - .github/copilot-instructions.md
             CopilotInstructionSetting()
                 .padding(SettingsToggle.defaultPadding)
@@ -37,6 +25,34 @@ struct ChatSection: View {
 
             // Custom Prompts - .github/prompts/*.prompt.md
             PromptFileSetting(promptType: .prompt)
+                .padding(SettingsToggle.defaultPadding)
+            
+            Divider()
+            
+            // Auto Attach toggle
+            SettingsToggle(
+                title: "Auto-attach Chat Window to Xcode",
+                isOn: $autoAttachChatToXcode
+            )
+
+            Divider()
+            
+            // Fix error toggle
+            SettingsToggle(
+                title: "Quick fix for error", 
+                isOn: $enableFixError
+            )
+            
+            Divider()
+
+            // Response language picker
+            ResponseLanguageSetting()
+                .padding(SettingsToggle.defaultPadding)
+            
+            Divider()
+            
+            // Font Size
+            FontSizeSetting()
                 .padding(SettingsToggle.defaultPadding)
         }
     }
@@ -99,6 +115,122 @@ struct ResponseLanguageSetting: View {
                 .frame(maxWidth: 200, alignment: .leading)
             }
         }
+    }
+}
+
+struct FontSizeSetting: View {
+    static let defaultSliderThumbRadius: CGFloat = Font.body.builtinSize
+    
+    @AppStorage(\.chatFontSize) var chatFontSize
+    @ScaledMetric(relativeTo: .body) var scaledPadding: CGFloat = 100
+    
+    @State private var sliderValue: Double = 0
+    @State private var textWidth: CGFloat = 0
+    @State private var sliderWidth: CGFloat = 0
+    
+    @StateObject private var fontScaleManager: FontScaleManager = .shared
+    
+    var maxSliderValue: Double {
+        FontScaleManager.maxScale * 100
+    }
+    
+    var minSliderValue: Double {
+        FontScaleManager.minScale * 100
+    }
+    
+    var defaultSliderValue: Double {
+        FontScaleManager.defaultScale * 100
+    }
+    
+    var sliderFontSize: Double {
+        chatFontSize * sliderValue / 100
+    }
+    
+    var maxScaleFontSize: Double {
+        FontScaleManager.maxScale * chatFontSize
+    }
+    
+    var body: some View {
+        WithPerceptionTracking {
+            HStack {
+                VStack(alignment: .leading) {
+                    Text("Font Size")
+                        .font(.body)
+                    Text("Use the slider to set the preferred size.")
+                        .font(.footnote)
+                }
+                
+                Spacer()
+                
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(alignment: .center, spacing: 8) {
+                        Text("A")
+                            .font(.system(size: sliderFontSize))
+                            .frame(width: maxScaleFontSize)
+                        
+                        Slider(value: $sliderValue, in: minSliderValue...maxSliderValue, step: 10) { _ in
+                            fontScaleManager.setFontScale(sliderValue / 100)
+                        }
+                        .background(
+                            GeometryReader { geometry in 
+                                Color.clear
+                                    .onAppear {
+                                        sliderWidth = geometry.size.width
+                                    }
+                            }
+                        )
+                        
+                        Text("\(Int(sliderValue))%")
+                            .font(.body)
+                            .foregroundColor(.primary)
+                            .frame(width: 40, alignment: .center)
+                    }
+                    .frame(height: maxScaleFontSize)
+                    
+                    Text("Default")
+                        .font(.caption)
+                        .foregroundColor(.primary)
+                        .background(
+                            GeometryReader { geometry in 
+                                Color.clear
+                                    .onAppear {
+                                        textWidth = geometry.size.width
+                                    }
+                            }
+                        )
+                        .padding(.leading, calculateDefaultMarkerXPosition() + 2)
+                        .onHover {
+                            if $0 {
+                                NSCursor.pointingHand.push()
+                            } else {
+                                NSCursor.pop()
+                            }
+                        }
+                        .onTapGesture {
+                            fontScaleManager.resetFontScale()
+                        }
+                }
+                .frame(width: 350, height: 35)
+            }
+            .onAppear {
+                sliderValue = fontScaleManager.currentScale * 100
+            }
+            .onChange(of: fontScaleManager.currentScale) {
+                // Use rounded value for floating-point precision issue
+                sliderValue = round($0 * 10) / 10 * 100
+            }
+        }
+    }
+    
+    private func calculateDefaultMarkerXPosition() -> CGFloat {
+        let sliderRange = maxSliderValue - minSliderValue
+        let normalizedPosition = (defaultSliderValue - minSliderValue) / sliderRange
+        
+        let usableWidth = sliderWidth - (Self.defaultSliderThumbRadius * 2)
+        
+        let markerPosition = Self.defaultSliderThumbRadius + (CGFloat(normalizedPosition) * usableWidth)
+        
+        return markerPosition - textWidth / 2 + maxScaleFontSize
     }
 }
 

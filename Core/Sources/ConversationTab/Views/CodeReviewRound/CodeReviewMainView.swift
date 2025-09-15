@@ -2,6 +2,7 @@ import ComposableArchitecture
 import ConversationServiceProvider
 import LanguageServerProtocol
 import SwiftUI
+import SharedUIComponents
 
 // MARK: - Main View
 
@@ -34,7 +35,7 @@ struct CodeReviewMainView: View {
     
     var helloMessageView: some View {
         Text(Self.HelloMessage)
-            .font(.system(size: chatFontSize))
+            .scaledFont(.system(size: chatFontSize))
     }
     
     var statusIcon: some View {
@@ -44,16 +45,19 @@ struct CodeReviewMainView: View {
                 ProgressView()
                     .controlSize(.small)
                     .frame(width: 16, height: 16)
-                    .scaleEffect(0.7)
+                    .scaledScaleEffect(0.7)
             case .completed:
                 Image(systemName: "checkmark")
                     .foregroundColor(.green)
+                    .scaledFont(.body)
             case .error:
                 Image(systemName: "xmark.circle")
                     .foregroundColor(.red)
+                    .scaledFont(.body)
             case .cancelled:
                 Image(systemName: "slash.circle")
                     .foregroundColor(.gray)
+                    .scaledFont(.body)
             case .waitForConfirmation:
                 EmptyView()
             case .accepted:
@@ -70,10 +74,10 @@ struct CodeReviewMainView: View {
             default:
                 HStack(spacing: 4) {
                     statusIcon
-                        .frame(width: 16, height: 16)
+                        .scaledFrame(width: 16, height: 16)
                     
                     Text("Running Code Review...")
-                        .font(.system(size: chatFontSize))
+                        .scaledFont(.system(size: chatFontSize))
                         .foregroundColor(.secondary)
                     
                     Spacer()

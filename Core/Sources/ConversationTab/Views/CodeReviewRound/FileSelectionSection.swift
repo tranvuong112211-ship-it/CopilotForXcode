@@ -48,10 +48,11 @@ private struct FileSelectionHeader: View {
         HStack(alignment: .top, spacing: 6) {
             Image("Sparkle")
                 .resizable()
-                .frame(width: 16, height: 16)
+                .scaledToFit()
+                .scaledFrame(width: 16, height: 16)
             
             Text("You’ve selected following \(fileCount) file(s) with code changes. Review them or unselect any files you don't need, then click Continue.")
-                .font(.system(size: chatFontSize))
+                .scaledFont(.system(size: chatFontSize))
                 .multilineTextAlignment(.leading)
         }
     }
@@ -69,12 +70,14 @@ private struct FileSelectionActions: View {
             }
             .buttonStyle(.bordered)
             .controlSize(.large)
+            .scaledFont(.body)
             
             Button("Continue") {
                 store.send(.codeReview(.accept(id: roundId, selectedFiles: selectedFileUris)))
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
+            .scaledFont(.body)
         }
     }
 }
@@ -89,6 +92,11 @@ private struct FileSelectionList: View {
     @State private var checkboxMixedState: CheckboxMixedState = .off
     @Binding var selectedFileUris: [DocumentUri]
     @AppStorage(\.chatFontSize) private var chatFontSize
+    @StateObject private var fontScaleManager = FontScaleManager.shared
+    
+    var fontScale: Double {
+        fontScaleManager.currentScale
+    }
     
     private static let defaultVisibleFileCount = 5
     
@@ -141,9 +149,11 @@ private struct FileSelectionList: View {
         let selectedCount = selectedFileUris.count
         let totalCount = fileUris.count
         let title = "All (\(selectedCount)/\(totalCount))"
+        let font: NSFont = .systemFont(ofSize: chatFontSize * fontScale)
         
         return MixedStateCheckbox(
             title: title,
+            font: font,
             state: $checkboxMixedState
         ) {
             switch checkboxMixedState {
@@ -181,12 +191,13 @@ private struct ExpandFilesButton: View {
         HStack(spacing: 2) {
             Image("chevron.down")
                 .resizable()
-                .frame(width: 16, height: 16)
+                .scaledToFit()
+                .scaledFrame(width: 16, height: 16)
             
             Button(action: { isExpanded = true }) {
                 Text("Show more")
-                    .font(.system(size: chatFontSize))
                     .underline()
+                    .scaledFont(.system(size: chatFontSize))
                     .lineSpacing(20)
             }
             .buttonStyle(PlainButtonStyle())
@@ -249,9 +260,10 @@ private struct FileSelectionRow: View {
                     drawFileIcon(fileURL)
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 16, height: 16)
+                        .scaledFrame(width: 16, height: 16)
                     
                     Text(fileURL?.lastPathComponent ?? fileUri)
+                        .scaledFont(.body)
                         .lineLimit(1)
                         .truncationMode(.middle)
                 }

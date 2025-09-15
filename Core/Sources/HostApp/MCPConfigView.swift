@@ -16,43 +16,62 @@ struct MCPConfigView: View {
     @State private var lastModificationDate: Date? = nil
     @State private var fileMonitorTask: Task<Void, Error>? = nil
     @State private var isMCPFFEnabled = false
+    @State private var selectedOption = ToolType.MCP
     @Environment(\.colorScheme) var colorScheme
 
     private static var lastSyncTimestamp: Date? = nil
+    
+    enum ToolType: String, CaseIterable, Identifiable {
+        case MCP
+        var id: Self { self }
+    }
 
     var body: some View {
         WithPerceptionTracking {
             ScrollView {
-                VStack(alignment: .leading, spacing: 8) {
-                    MCPIntroView(isMCPFFEnabled: $isMCPFFEnabled)
-                    if isMCPFFEnabled {
-                        MCPToolsListView()
+                Picker("", selection: $selectedOption) {
+                    Text("MCP").tag(ToolType.MCP)
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 400)
+                
+                Group {
+                    if selectedOption == .MCP {
+                        VStack(alignment: .leading, spacing: 8) {
+                            MCPIntroView(isMCPFFEnabled: $isMCPFFEnabled)
+                            if isMCPFFEnabled {
+                                MCPToolsListView()
+                            }
+                        }
+                        .onAppear {
+                            setupConfigFilePath()
+                            Task {
+                                await updateMCPFeatureFlag()
+                            }
+                        }
+                        .onDisappear {
+                            stopMonitoringConfigFile()
+                        }
+                        .onChange(of: isMCPFFEnabled) { newMCPFFEnabled in
+                            if newMCPFFEnabled {
+                                startMonitoringConfigFile()
+                                refreshConfiguration(())
+                            } else {
+                                stopMonitoringConfigFile()
+                            }
+                        }
+                        .onReceive(DistributedNotificationCenter.default()
+                            .publisher(for: .gitHubCopilotFeatureFlagsDidChange)) { _ in
+                                Task {
+                                    await updateMCPFeatureFlag()
+                                }
+                            }
+                    } else {
+                        // Built-In Tools View
+                        EmptyView()
                     }
                 }
                 .padding(20)
-                .onAppear {
-                    setupConfigFilePath()
-                    Task {
-                        await updateMCPFeatureFlag()
-                    }
-                }
-                .onDisappear {
-                    stopMonitoringConfigFile()
-                }
-                .onChange(of: isMCPFFEnabled) { newMCPFFEnabled in
-                    if newMCPFFEnabled {
-                        startMonitoringConfigFile()
-                        refreshConfiguration(())
-                    } else {
-                        stopMonitoringConfigFile()
-                    }
-                }
-                .onReceive(DistributedNotificationCenter.default()
-                    .publisher(for: .gitHubCopilotFeatureFlagsDidChange)) { _ in
-                    Task {
-                        await updateMCPFeatureFlag()
-                    }
-                }
             }
         }
     }

@@ -163,7 +163,7 @@ struct ChatTitleBar: View {
                 ) {
                     Image(systemName: "minus")
                         .foregroundStyle(.black.opacity(0.5))
-                        .font(Font.system(size: 8).weight(.heavy))
+                        .scaledFont(Font.system(size: 8).weight(.heavy))
                 }
                 .opacity(0)
                 .keyboardShortcut("m", modifiers: [.command])
@@ -181,7 +181,7 @@ struct ChatTitleBar: View {
                     ) {
                         Image(systemName: "pin.fill")
                             .foregroundStyle(.black.opacity(0.5))
-                            .font(Font.system(size: 6).weight(.black))
+                            .scaledFont(Font.system(size: 6).weight(.black))
                             .transformEffect(.init(translationX: 0, y: 0.5))
                     }
                 }
@@ -213,7 +213,7 @@ struct ChatTitleBar: View {
                             ? color
                             : Color(nsColor: .separatorColor)
                     )
-                    .frame(
+                    .scaledFrame(
                         width: Style.trafficLightButtonSize,
                         height: Style.trafficLightButtonSize
                     )
@@ -322,10 +322,10 @@ struct ChatBar: View {
                             .resizable()
                             .renderingMode(.original)
                             .scaledToFit()
-                            .frame(width: 24, height: 24)
+                            .scaledFrame(width: 24, height: 24)
 
                     Text(store.chatHistory.selectedWorkspaceName!)
-                        .font(.system(size: 13, weight: .bold))
+                        .scaledFont(.system(size: 13, weight: .bold))
                         .padding(.leading, 4)
                         .truncationMode(.tail)
                         .frame(maxWidth: 192, alignment: .leading)
@@ -344,6 +344,7 @@ struct ChatBar: View {
                     store.send(.createNewTapButtonClicked(kind: nil))
                 }) {
                     Image(systemName: "plus.bubble")
+                        .scaledFont(.body)
                 }
                 .buttonStyle(HoverButtonStyle())
                 .padding(.horizontal, 4)
@@ -364,8 +365,10 @@ struct ChatBar: View {
                 }) {
                     if #available(macOS 15.0, *) {
                         Image(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")
+                            .scaledFont(.body)
                     } else {
                         Image(systemName: "clock.arrow.circlepath")
+                            .scaledFont(.body)
                     }
                 }
                 .buttonStyle(HoverButtonStyle())
@@ -385,6 +388,7 @@ struct ChatBar: View {
                     store.send(.openSettings)
                 }) {
                     Image(systemName: "gearshape")
+                        .scaledFont(.body)
                 }
                 .buttonStyle(HoverButtonStyle())
                 .padding(.horizontal, 4)
@@ -506,7 +510,7 @@ struct CreateOtherChatTabMenuStyle: MenuStyle {
     func makeBody(configuration: Configuration) -> some View {
         Image(systemName: "chevron.down")
             .resizable()
-            .frame(width: 7, height: 4)
+            .scaledFrame(width: 7, height: 4)
             .frame(maxHeight: .infinity)
             .padding(.leading, 4)
             .padding(.trailing, 8)

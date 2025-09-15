@@ -127,12 +127,20 @@ public struct CustomTextEditor: NSViewRepresentable {
     public func updateNSView(_ nsView: NSScrollView, context: Context) {
         let textView = (context.coordinator.theTextView.documentView as! NSTextView)
         textView.isEditable = isEditable
-        guard textView.string != text else { return }
-        textView.string = text
-        textView.undoManager?.removeAllActions()
         
-        // Update height calculation when text changes
-        context.coordinator.calculateAndUpdateHeight(textView: textView)
+        if textView.font != font {
+            textView.font = font
+            // Update height calculation when text changes
+            context.coordinator.calculateAndUpdateHeight(textView: textView)
+        }
+        
+        if textView.string != text {
+            textView.string = text
+            textView.undoManager?.removeAllActions()
+            // Update height calculation when text changes
+            context.coordinator.calculateAndUpdateHeight(textView: textView)
+        }
+        
     }
 }
 

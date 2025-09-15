@@ -99,23 +99,33 @@ actor WidgetWindowsController: NSObject {
     }
     
     private func setupCodeReviewPanelObservers() {
-        store.publisher
-            .map(\.codeReviewPanelState.currentIndex)
-            .removeDuplicates()
-            .sink { [weak self] _ in 
-                Task { [weak self] in
-                    await self?.updateCodeReviewWindowLocation(.onCurrentReviewIndexChanged)
+        Task { @MainActor in 
+            let currentIndexPublisher = store.publisher
+                .map(\.codeReviewPanelState.currentIndex)
+                .removeDuplicates()
+                .sink { [weak self] _ in 
+                    Task { [weak self] in
+                        await self?.updateCodeReviewWindowLocation(.onCurrentReviewIndexChanged)
+                    }
                 }
-            }.store(in: &cancellable)
-        
-        store.publisher
-            .map(\.codeReviewPanelState.isPanelDisplayed)
-            .removeDuplicates()
-            .sink { [weak self] isPanelDisplayed in 
-                Task { [weak self] in 
-                    await self?.updateCodeReviewWindowLocation(.onIsPanelDisplayedChanged(isPanelDisplayed))
+            
+            let isPanelDisplayedPublisher = store.publisher
+                .map(\.codeReviewPanelState.isPanelDisplayed)
+                .removeDuplicates()
+                .sink { [weak self] isPanelDisplayed in 
+                    Task { [weak self] in 
+                        await self?.updateCodeReviewWindowLocation(.onIsPanelDisplayedChanged(isPanelDisplayed))
+                    }
                 }
-            }.store(in: &cancellable)
+            
+            await self.storeCancellables([currentIndexPublisher, isPanelDisplayedPublisher])
+        }
+    }
+    
+    func storeCancellables(_ newCancellables: [AnyCancellable]) {
+        for cancellable in newCancellables {
+            self.cancellable.insert(cancellable)
+        }
     }
 }
 
@@ -528,7 +538,11 @@ extension WidgetWindowsController {
               let currentXcodeRect = currentFocusedWindow.rect,
               let notif = notif
         else { return }
-        
+
+        guard let sourceEditor = await xcodeInspector.safe.focusedEditor,
+              sourceEditor.realtimeWorkspaceURL != nil
+        else { return }
+
         if let previousXcodeApp = (await previousXcodeApp),
            currentXcodeApp.processIdentifier == previousXcodeApp.processIdentifier {
             if currentFocusedWindow.isFullScreen == true {
@@ -622,6 +636,8 @@ extension WidgetWindowsController {
             }
 
             await adjustChatPanelWindowLevel()
+            
+            await updateFixErrorPanelWindowLocation()
         }
 
         let now = Date()
@@ -1044,7 +1060,7 @@ public final class WidgetWindows {
         it.isOpaque = false
         it.backgroundColor = .clear
         it.collectionBehavior = [.fullScreenAuxiliary, .transient, .canJoinAllSpaces]
-        it.hasShadow = true
+        it.hasShadow = false
         it.level = widgetLevel(2)
         it.contentView = NSHostingView(
             rootView: FixErrorPanelView(

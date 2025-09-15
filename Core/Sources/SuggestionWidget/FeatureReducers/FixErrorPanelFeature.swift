@@ -9,7 +9,7 @@ import ConversationTab
 public struct FixErrorPanelFeature {
     @ObservableState
     public struct State: Equatable {
-        public var focusedEditor: SourceEditor? = nil 
+        public var focusedEditor: SourceEditor? = nil
         public var editorContent: EditorInformation.SourceEditorContent? = nil
         public var fixId: String? = nil
         public var fixFailure: FixEditorErrorIssueFailure? = nil
@@ -17,22 +17,32 @@ public struct FixErrorPanelFeature {
             editorContent?.cursorPosition
         }
         public var isPanelDisplayed: Bool = false
-        
-        public var errorAnnotations: [EditorInformation.LineAnnotation] {
-            editorContent?.lineAnnotations.filter { $0.isError } ?? []
+        public var shouldCheckingAnnotations: Bool = false {
+            didSet {
+                if shouldCheckingAnnotations {
+                    annotationCheckStartTime = Date()
+                }
+            }
         }
+        public var maxCheckDuration: TimeInterval = 30.0
+        public var annotationCheckStartTime: Date? = nil
         
         public var editorContentLines: [String] {
             editorContent?.lines ?? []
         }
         
         public var errorAnnotationsAtCursorPosition: [EditorInformation.LineAnnotation] {
-            let errorAnnotations = errorAnnotations
-            guard !errorAnnotations.isEmpty, let cursorPosition = cursorPosition else {
+            guard let editorContent = editorContent else {
                 return []
             }
             
-            return errorAnnotations.filter { $0.line == cursorPosition.line + 1 }
+            return getErrorAnnotationsAtCursor(from: editorContent)
+        }
+        
+        public func getErrorAnnotationsAtCursor(from editorContent: EditorInformation.SourceEditorContent) -> [EditorInformation.LineAnnotation] {
+            return editorContent.lineAnnotations
+                .filter { $0.isError }
+                .filter { $0.line == editorContent.cursorPosition.line + 1 }
         }
         
         public mutating func resetFailure() {
@@ -49,6 +59,7 @@ public struct FixErrorPanelFeature {
         
         case fixErrorIssue([EditorInformation.LineAnnotation])
         case scheduleFixFailureReset
+        case observeErrorNotification
         
         case appear
         case onFailure(FixEditorErrorIssueFailure)
@@ -58,6 +69,7 @@ public struct FixErrorPanelFeature {
         // Annotation checking
         case startAnnotationCheck
         case onAnnotationCheckTimerFired
+        case stopCheckingAnnotation
     }
     
     let id = UUID()
@@ -76,6 +88,12 @@ public struct FixErrorPanelFeature {
         Reduce { state, action in
             switch action {
             case .appear:
+                return .run { send in 
+                    await send(.observeErrorNotification)
+                    await send(.startAnnotationCheck)
+                }
+                
+            case .observeErrorNotification:
                 return .run { send in 
                     let stream = AsyncStream<Void> { continuation in
                         let observer = NotificationCenter.default.addObserver(
@@ -105,35 +123,28 @@ public struct FixErrorPanelFeature {
                     id: CancelID.observeErrorNotification(id), 
                     cancelInFlight: true
                 )
-                
             case .onFocusedEditorChanged(let editor):
                 state.focusedEditor = editor
-                return .merge(
-                    .send(.startAnnotationCheck),
-                    .send(.resetFixFailure)
-                )
+                state.editorContent = nil
+                state.shouldCheckingAnnotations = true
+                return .none
                 
             case .onEditorContentChanged:
-                return .merge(
-                    .send(.startAnnotationCheck),
-                    .send(.resetFixFailure)
-                )
+                state.shouldCheckingAnnotations = true
+                return .none
                 
             case .onScrollPositionChanged:
-                return .merge(
-                    .send(.resetFixFailure),
-                    // Force checking the annotation
-                    .send(.onAnnotationCheckTimerFired),
-                    .send(.checkDisplay)
-                )
+                if state.shouldCheckingAnnotations {
+                    state.shouldCheckingAnnotations = false
+                }
+                if state.editorContent != nil {
+                    state.editorContent = nil
+                }
+                return .none
                 
             case .onCursorPositionChanged:
-                return .merge(
-                    .send(.resetFixFailure),
-                    // Force checking the annotation
-                    .send(.onAnnotationCheckTimerFired),
-                    .send(.checkDisplay)
-                )
+                state.shouldCheckingAnnotations = true
+                return .none
                 
             case .fixErrorIssue(let annotations):
                 guard let fileURL = state.focusedEditor?.realtimeDocumentURL ?? nil,
@@ -200,11 +211,9 @@ public struct FixErrorPanelFeature {
                 
             case .startAnnotationCheck:
                 return .run { send in 
-                    let startTime = Date()
-                    let maxDuration: TimeInterval = 60 * 5
-                    let interval: TimeInterval = 1
+                    let interval: TimeInterval = 2
                     
-                    while Date().timeIntervalSince(startTime) < maxDuration {
+                    while !Task.isCancelled {
                         try await Task.sleep(nanoseconds: UInt64(interval) * 1_000_000_000)
                         
                         await send(.onAnnotationCheckTimerFired)
@@ -212,27 +221,45 @@ public struct FixErrorPanelFeature {
                 }.cancellable(id: CancelID.annotationCheck(id), cancelInFlight: true)
                 
             case .onAnnotationCheckTimerFired:
-                guard let editor = state.focusedEditor else {
-                    return .cancel(id: CancelID.annotationCheck(id))
+                // Check if max duration exceeded
+                if let startTime = state.annotationCheckStartTime,
+                   Date().timeIntervalSince(startTime) > state.maxCheckDuration {
+                    return .run { send in
+                        await send(.stopCheckingAnnotation)
+                        await send(.checkDisplay)
+                    }
+                }
+                
+                guard state.shouldCheckingAnnotations,
+                      let editor = state.focusedEditor
+                else {
+                    return .run { send in
+                        await send(.checkDisplay)
+                    }
                 }
                 
                 let newEditorContent = editor.getContent()
-                let newLineAnnotations = newEditorContent.lineAnnotations
-                let newErrorLineAnnotations = newLineAnnotations.filter { $0.isError }
-                let errorAnnotations = state.errorAnnotations
+                let newErrorAnnotationsAtCursorPosition = state.getErrorAnnotationsAtCursor(from: newEditorContent)
+                let errorAnnotationsAtCursorPosition = state.errorAnnotationsAtCursorPosition
                 
                 if state.editorContent != newEditorContent {
                     state.editorContent = newEditorContent
                 }
                 
-                if errorAnnotations != newErrorLineAnnotations {
+                if Set(errorAnnotationsAtCursorPosition) != Set(newErrorAnnotationsAtCursorPosition) {
+                    // Keep checking annotations as Xcode may update them asynchronously after content changes
                     return .merge(
-                        .send(.checkDisplay),
-                        .cancel(id: CancelID.annotationCheck(id))
+                        .run { send in
+                            await send(.checkDisplay)
+                        }
                     )
                 } else {
                     return .none
                 }
+                
+            case .stopCheckingAnnotation:
+                state.shouldCheckingAnnotations = false
+                return .none
             }
         }
     }

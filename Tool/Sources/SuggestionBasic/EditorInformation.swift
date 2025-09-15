@@ -4,7 +4,7 @@ import AppKit
 import AXExtension
 
 public struct EditorInformation {
-    public struct LineAnnotation: Equatable {
+    public struct LineAnnotation: Equatable, Hashable {
         public var type: String
         public var line: Int // 1-Based
         public var message: String

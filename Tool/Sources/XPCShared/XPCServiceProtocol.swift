@@ -22,8 +22,11 @@ public protocol XPCServiceProtocol {
     func getXPCServiceAccessibilityPermission(withReply reply: @escaping (ObservedAXStatus) -> Void)
     func getXPCServiceExtensionPermission(withReply reply: @escaping (ExtensionPermissionStatus) -> Void)
     func getXcodeInspectorData(withReply reply: @escaping (Data?, Error?) -> Void)
+
     func getAvailableMCPServerToolsCollections(withReply reply: @escaping (Data?) -> Void)
     func updateMCPServerToolsStatus(tools: Data)
+    func listMCPRegistryServers(_ params: Data, withReply reply: @escaping (Data?, Error?) -> Void)
+    func getMCPRegistryServer(_ params: Data, withReply reply: @escaping (Data?, Error?) -> Void)
     
     func getCopilotFeatureFlags(withReply reply: @escaping (Data?) -> Void)
 
