@@ -256,7 +256,7 @@ let package = Package(
 
         .target(
             name: "Status",
-            dependencies: ["Cache"]
+            dependencies: ["Cache", "Preferences"]
         ),
 
         .target(
@@ -363,7 +363,7 @@ let package = Package(
         
         // MARK: - AppKitExtension
         
-        .target(name: "AppKitExtension"),
+        .target(name: "AppKitExtension", dependencies: ["Logger"]),
         
         // MARK: - GitHelper
         .target(

@@ -23,6 +23,7 @@ struct ModelPicker: View {
     @State private var agentScopeCache: ScopeCache = ScopeCache()
     
     @State var isMCPFFEnabled: Bool
+    @State var isBYOKFFEnabled: Bool
     @State private var cancellables = Set<AnyCancellable>()
     
     @StateObject private var fontScaleManager = FontScaleManager.shared
@@ -47,12 +48,14 @@ struct ModelPicker: View {
             CopilotModelManager.getDefaultChatModel()
         self._selectedModel = State(initialValue: initialModel)
         self.isMCPFFEnabled = FeatureFlagNotifierImpl.shared.featureFlags.mcp
+        self.isBYOKFFEnabled = FeatureFlagNotifierImpl.shared.featureFlags.byok
         updateAgentPicker()
     }
     
     private func subscribeToFeatureFlagsDidChangeEvent() {
         FeatureFlagNotifierImpl.shared.featureFlagsDidChange.sink(receiveValue: { featureFlags in
             isMCPFFEnabled = featureFlags.mcp
+            isBYOKFFEnabled = featureFlags.byok
         })
         .store(in: &cancellables)
     }
@@ -142,7 +145,10 @@ struct ModelPicker: View {
 
     func updateCurrentModel() {
         let currentModel = AppState.shared.getSelectedModel()
-        let allAvailableModels = copilotModels + byokModels
+        var allAvailableModels = copilotModels
+        if isBYOKFFEnabled {
+            allAvailableModels += byokModels
+        }
         
         // Check if current model exists in available models for current scope using model comparison
         let modelExists = allAvailableModels.contains { model in
@@ -207,11 +213,13 @@ struct ModelPicker: View {
             // Display premium models section if available
             modelSection(title: "Premium Models", models: premiumModels)
             
-            // Display byok models section if available
-            modelSection(title: "Other Models", models: byokModels)
-            
-            Button("Manage Models...") {
-                try? launchHostAppBYOKSettings()
+            if isBYOKFFEnabled {
+                // Display byok models section if available
+                modelSection(title: "Other Models", models: byokModels)
+
+                Button("Manage Models...") {
+                    try? launchHostAppBYOKSettings()
+                }
             }
             
             if standardModels.isEmpty {
@@ -340,6 +348,9 @@ struct ModelPicker: View {
                 updateModelCacheIfNeeded(for: .agentPanel)
             }
             .onChange(of: chatMode) { _ in
+                updateCurrentModel()
+            }
+            .onChange(of: isBYOKFFEnabled) { _ in
                 updateCurrentModel()
             }
             .onReceive(NotificationCenter.default.publisher(for: .gitHubCopilotSelectedModelDidChange)) { _ in

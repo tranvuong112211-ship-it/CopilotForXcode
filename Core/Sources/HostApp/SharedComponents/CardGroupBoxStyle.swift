@@ -2,8 +2,13 @@ import SwiftUI
 
 public struct CardGroupBoxStyle: GroupBoxStyle {
     public var backgroundColor: Color
-    public init(backgroundColor: Color = Color("GroupBoxBackgroundColor")) {
+    public var borderColor: Color
+    public init(
+        backgroundColor: Color = QuaternarySystemFillColor.opacity(0.75),
+        borderColor: Color = SecondarySystemFillColor
+    ) {
         self.backgroundColor = backgroundColor
+        self.borderColor = borderColor
     }
     public func makeBody(configuration: Configuration) -> some View {
         VStack(alignment: .leading, spacing: 11) {
@@ -13,11 +18,11 @@ public struct CardGroupBoxStyle: GroupBoxStyle {
         .padding(8)
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .background(backgroundColor)
-        .cornerRadius(4)
+        .cornerRadius(12)
         .overlay(
-            RoundedRectangle(cornerRadius: 4)
+            RoundedRectangle(cornerRadius: 12)
                 .inset(by: 0.5)
-                .stroke(Color("GroupBoxStrokeColor"), lineWidth: 1)
+                .stroke(borderColor, lineWidth: 1)
         )
     }
 }

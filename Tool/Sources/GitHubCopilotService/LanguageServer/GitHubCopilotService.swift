@@ -83,7 +83,8 @@ public protocol GitHubCopilotConversationServiceType {
     func cancelProgress(token: String) async
     func templates(workspaceFolders: [WorkspaceFolder]?) async throws -> [ChatTemplate]
     func models() async throws -> [CopilotModel]
-    func registerTools(tools: [LanguageModelToolInformation]) async throws
+    func registerTools(tools: [LanguageModelToolInformation]) async throws -> [LanguageModelTool]
+    func updateToolsStatus(params: UpdateToolsStatusParams) async throws -> [LanguageModelTool]
 }
 
 protocol GitHubCopilotLSP {
@@ -252,6 +253,7 @@ public class GitHubCopilotBaseService {
                     experimental: nil
                 )
 
+                let authAppId = Bundle.main.infoDictionary?["GITHUB_APP_ID"] as? String
                 return InitializeParams(
                     processId: Int(ProcessInfo.processInfo.processIdentifier),
                     locale: nil,
@@ -270,7 +272,8 @@ public class GitHubCopilotBaseService {
                             /// The editor has support for watching files over LSP
                             "watchedFiles": watchedFiles,
                             "didChangeFeatureFlags": true
-                        ]
+                        ],
+                        "githubAppId": authAppId.map(JSONValue.string) ?? .null,
                     ],
                     capabilities: capabilities,
                     trace: .off,
@@ -381,6 +384,30 @@ func getTerminalEnvironmentVariables(_ variableNames: [String]) -> [String: Stri
     public static let shared = TheActor()
 }
 
+actor ToolInitializationActor {
+    private var isInitialized = false
+    private var unrestoredTools: [ToolStatusUpdate] = []
+
+    func loadUnrestoredToolsIfNeeded() -> [ToolStatusUpdate] {
+        guard !isInitialized else { return unrestoredTools }
+        isInitialized = true
+
+        // Load tools only once
+        if let savedJSON = AppState.shared.get(key: "languageModelToolsStatus"),
+           let data = try? JSONEncoder().encode(savedJSON),
+           let savedTools = try? JSONDecoder().decode([ToolStatusUpdate].self, from: data) {
+            let currentlyAvailableTools = CopilotLanguageModelToolManager.getAvailableLanguageModelTools() ?? []
+            let availableToolNames = Set(currentlyAvailableTools.map { $0.name })
+
+            unrestoredTools = savedTools.filter {
+                availableToolNames.contains($0.name) && $0.status == .disabled
+            }
+        }
+
+        return unrestoredTools
+    }
+}
+
 public final class GitHubCopilotService:
     GitHubCopilotBaseService,
     GitHubCopilotSuggestionServiceType,
@@ -397,6 +424,7 @@ public final class GitHubCopilotService:
     private var isMCPInitialized = false
     private var unrestoredMcpServers: [String] = []
     private var mcpRuntimeLogFileName: String = ""
+    private static let toolInitializationActor = ToolInitializationActor()
     private var lastSentConfiguration: JSONValue?
 
     override init(designatedServer: any GitHubCopilotLSP) {
@@ -455,7 +483,9 @@ public final class GitHubCopilotService:
             GitHubCopilotService.services.append(self)
 
             Task {
-                await registerClientTools(server: self)
+                let tools = await registerClientTools(server: self)
+                CopilotLanguageModelToolManager.updateToolsStatus(tools)
+                await restoreRegisteredToolsStatus()
             }
         } catch {
             Logger.gitHubCopilot.error(error)
@@ -711,11 +741,24 @@ public final class GitHubCopilotService:
     }
 
     @GitHubCopilotSuggestionActor
-    public func registerTools(tools: [LanguageModelToolInformation]) async throws {
+    public func registerTools(tools: [LanguageModelToolInformation]) async throws -> [LanguageModelTool] {
         do {
-            _ = try await sendRequest(
+            let response = try await sendRequest(
                 GitHubCopilotRequest.RegisterTools(params: RegisterToolsParams(tools: tools))
             )
+            return response
+        } catch {
+            throw error
+        }
+    }
+    
+    @GitHubCopilotSuggestionActor
+    public func updateToolsStatus(params: UpdateToolsStatusParams) async throws -> [LanguageModelTool] {
+        do {
+            let response = try await sendRequest(
+                GitHubCopilotRequest.UpdateToolsStatus(params: params)
+            )
+            return response
         } catch {
             throw error
         }
@@ -1157,6 +1200,63 @@ public final class GitHubCopilotService:
 
         if let updateError {
             Logger.gitHubCopilot.error("Failed to update MCP Tools status: \(updateError)")
+        }
+    }
+    
+    public static func updateAllCLSTools(tools: [ToolStatusUpdate]) async -> [LanguageModelTool]  {
+        var updateError: Error? = nil
+        var updatedTools: [LanguageModelTool] = []
+
+        for service in services {
+            if service.projectRootURL.path == "/" {
+                continue // Skip services with root project URL
+            }
+
+            do {
+                updatedTools = try await service.updateToolsStatus(
+                    params: .init(tools: tools)
+                )
+            } catch let error as ServerError {
+                updateError = GitHubCopilotError.languageServerError(error)
+            } catch {
+                updateError = error
+            }
+        }
+        
+        CopilotLanguageModelToolManager.updateToolsStatus(updatedTools)
+        Logger.gitHubCopilot.info("Updated All Built-In Tools: \(tools.count) tools")
+
+        if let updateError {
+            Logger.gitHubCopilot.error("Failed to update Built-In Tools status: \(updateError)")
+        }
+        
+        return updatedTools
+    }
+    
+    private func loadUnrestoredLanguageModelTools() -> [ToolStatusUpdate] {
+        if let savedJSON = AppState.shared.get(key: "languageModelToolsStatus"),
+           let data = try? JSONEncoder().encode(savedJSON),
+           let savedTools = try? JSONDecoder().decode([ToolStatusUpdate].self, from: data) {
+            return savedTools
+        }
+        return []
+    }
+    
+    private func restoreRegisteredToolsStatus() async {
+        // Get unrestored tools from the shared coordinator
+        let toolsToRestore = await GitHubCopilotService.toolInitializationActor.loadUnrestoredToolsIfNeeded()
+
+        guard !toolsToRestore.isEmpty else {
+            Logger.gitHubCopilot.info("No previously disabled tools need to be restored")
+            return
+        }
+        
+        do {
+            let updatedTools = try await updateToolsStatus(params: .init(tools: toolsToRestore))
+            CopilotLanguageModelToolManager.updateToolsStatus(updatedTools)
+            Logger.gitHubCopilot.info("Restored \(toolsToRestore.count) disabled tools for service at \(projectRootURL.path)")
+        } catch {
+            Logger.gitHubCopilot.error("Failed to restore tools for service at \(projectRootURL.path): \(error)")
         }
     }
 

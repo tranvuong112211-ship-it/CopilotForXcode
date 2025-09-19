@@ -1,9 +1,11 @@
 import SwiftUI
-import GitHubCopilotService
+import ConversationServiceProvider
 
 /// Individual tool row
-struct MCPToolRow: View {
-    let tool: MCPTool
+struct ToolRow: View {
+    let toolName: String
+    let toolDescription: String?
+    let toolStatus: ToolStatus
     let isServerEnabled: Bool
     @Binding var isToolEnabled: Bool
     let onToolToggleChanged: (Bool) -> Void
@@ -16,9 +18,9 @@ struct MCPToolRow: View {
             )) {
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(alignment: .center, spacing: 8) {
-                        Text(tool.name).fontWeight(.medium)
+                        Text(toolName).fontWeight(.medium)
                         
-                        if let description = tool.description {
+                        if let description = toolDescription {
                             Text(description)
                                 .font(.system(size: 11))
                                 .foregroundColor(.secondary)
@@ -31,9 +33,8 @@ struct MCPToolRow: View {
                 }
             }
         }
-        .padding(.leading, 36)
         .padding(.vertical, 0)
-        .onChange(of: tool._status) { isToolEnabled = $0 == .enabled }
+        .onChange(of: toolStatus) { isToolEnabled = $0 == .enabled }
         .onChange(of: isServerEnabled) { if !$0 { isToolEnabled = false } }
     }
 }

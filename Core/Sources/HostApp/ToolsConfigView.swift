@@ -22,7 +22,7 @@ struct MCPConfigView: View {
     private static var lastSyncTimestamp: Date? = nil
     
     enum ToolType: String, CaseIterable, Identifiable {
-        case MCP
+        case MCP, BuiltIn
         var id: Self { self }
     }
 
@@ -31,6 +31,7 @@ struct MCPConfigView: View {
             ScrollView {
                 Picker("", selection: $selectedOption) {
                     Text("MCP").tag(ToolType.MCP)
+                    Text("Built-In").tag(ToolType.BuiltIn)
                 }
                 .pickerStyle(.segmented)
                 .frame(width: 400)
@@ -40,6 +41,7 @@ struct MCPConfigView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             MCPIntroView(isMCPFFEnabled: $isMCPFFEnabled)
                             if isMCPFFEnabled {
+                                MCPManualInstallView()
                                 MCPToolsListView()
                             }
                         }
@@ -67,8 +69,7 @@ struct MCPConfigView: View {
                                 }
                             }
                     } else {
-                        // Built-In Tools View
-                        EmptyView()
+                        BuiltInToolsListView()
                     }
                 }
                 .padding(20)

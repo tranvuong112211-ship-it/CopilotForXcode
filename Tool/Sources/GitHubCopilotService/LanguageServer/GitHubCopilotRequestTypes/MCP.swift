@@ -1,16 +1,12 @@
 import Foundation
 import JSONRPC
 import LanguageServerProtocol
+import ConversationServiceProvider
 
 public enum MCPServerStatus: String, Codable, Equatable, Hashable {
     case running = "running"
     case stopped = "stopped"
     case error = "error"
-}
-
-public enum MCPToolStatus: String, Codable, Equatable, Hashable {
-    case enabled = "enabled"
-    case disabled = "disabled"
 }
 
 public struct InputSchema: Codable, Equatable, Hashable {
@@ -81,14 +77,14 @@ public struct ToolAnnotations: Codable, Equatable, Hashable {
 public struct MCPTool: Codable, Equatable, Hashable {
     public let name: String
     public let description: String?
-    public let _status: MCPToolStatus
+    public let _status: ToolStatus
     public let inputSchema: InputSchema
     public var annotations: ToolAnnotations?
     
     public init(
         name: String,
         description: String? = nil,
-        _status: MCPToolStatus,
+        _status: ToolStatus,
         inputSchema: InputSchema,
         annotations: ToolAnnotations? = nil
     ) {
@@ -132,9 +128,9 @@ public struct GetAllToolsParams: Codable, Hashable {
 
 public struct UpdatedMCPToolsStatus: Codable, Hashable {
     public var name: String
-    public var status: MCPToolStatus
+    public var status: ToolStatus
     
-    public init(name: String, status: MCPToolStatus) {
+    public init(name: String, status: ToolStatus) {
         self.name = name
         self.status = status
     }

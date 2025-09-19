@@ -4,10 +4,12 @@ import SwiftUI
 import Toast
 import XcodeInspector
 import SharedUIComponents
+import Logger
 
 struct ChatSection: View {
     @AppStorage(\.autoAttachChatToXcode) var autoAttachChatToXcode
     @AppStorage(\.enableFixError) var enableFixError
+    @State private var isEditorPreviewEnabled: Bool = false
 
     var body: some View {
         SettingsSection(title: "Chat Settings") {
@@ -23,11 +25,13 @@ struct ChatSection: View {
 
             Divider()
 
-            // Custom Prompts - .github/prompts/*.prompt.md
-            PromptFileSetting(promptType: .prompt)
-                .padding(SettingsToggle.defaultPadding)
-            
-            Divider()
+            if isEditorPreviewEnabled {
+                // Custom Prompts - .github/prompts/*.prompt.md
+                PromptFileSetting(promptType: .prompt)
+                    .padding(SettingsToggle.defaultPadding)
+
+                Divider()
+            }
             
             // Auto Attach toggle
             SettingsToggle(
@@ -54,6 +58,28 @@ struct ChatSection: View {
             // Font Size
             FontSizeSetting()
                 .padding(SettingsToggle.defaultPadding)
+        }
+        .onAppear {
+            Task {
+                await updateEditorPreviewFeatureFlag()
+            }
+        }
+        .onReceive(DistributedNotificationCenter.default()
+            .publisher(for: .gitHubCopilotFeatureFlagsDidChange)) { _ in
+                Task {
+                    await updateEditorPreviewFeatureFlag()
+                }
+            }
+    }
+    
+    private func updateEditorPreviewFeatureFlag() async {
+        do {
+            let service = try getService()
+            if let featureFlags = try await service.getCopilotFeatureFlags() {
+                isEditorPreviewEnabled = featureFlags.editorPreviewFeatures
+            }
+        } catch {
+            Logger.client.error("Failed to get copilot feature flags: \(error)")
         }
     }
 }
@@ -112,7 +138,7 @@ struct ResponseLanguageSetting: View {
                         Text(option.displayName).tag(option.localeCode)
                     }
                 }
-                .frame(maxWidth: 200, alignment: .leading)
+                .frame(maxWidth: 200, alignment: .trailing)
             }
         }
     }
@@ -198,7 +224,7 @@ struct FontSizeSetting: View {
                                     }
                             }
                         )
-                        .padding(.leading, calculateDefaultMarkerXPosition() + 2)
+                        .padding(.leading, calculateDefaultMarkerXPosition() + 6)
                         .onHover {
                             if $0 {
                                 NSCursor.pointingHand.push()

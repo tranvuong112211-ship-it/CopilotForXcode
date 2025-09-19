@@ -595,4 +595,8 @@ public extension UserDefaultPreferenceKeys {
     var verboseLoggingEnabled: PreferenceKey<Bool> {
         .init(defaultValue: false, key: "VerboseLoggingEnabled")
     }
+    
+    var currentUserName: PreferenceKey<String> {
+        .init(defaultValue: "", key: "CurrentUserName")
+    }
 }

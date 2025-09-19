@@ -139,7 +139,7 @@ struct FileEditView: View {
                 switch imageType {
                 case .system(let name):
                     Image(systemName: name)
-                        .scaledFont(.system(size: 15, weight: .regular))
+                        .scaledFont(size: 15, weight: .regular)
                 case .asset(let name):
                     Image(name)
                         .renderingMode(.template)

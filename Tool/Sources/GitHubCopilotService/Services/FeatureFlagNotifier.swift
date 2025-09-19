@@ -20,6 +20,7 @@ public struct DidChangeFeatureFlagsParams: Hashable, Codable {
     let envelope: [String: JSONValue]
     let token: [String: String]
     let activeExps: ActiveExperimentForFeatureFlags
+    let byok: Bool?
 }
 
 public struct FeatureFlags: Hashable, Codable {
@@ -31,6 +32,8 @@ public struct FeatureFlags: Hashable, Codable {
     public var agentMode: Bool
     public var mcp: Bool
     public var ccr: Bool // Copilot Code Review
+    public var byok: Bool
+    public var editorPreviewFeatures: Bool
     public var activeExperimentForFeatureFlags: ActiveExperimentForFeatureFlags
     
     public init(
@@ -42,6 +45,8 @@ public struct FeatureFlags: Hashable, Codable {
         agentMode: Bool = true,
         mcp: Bool = true,
         ccr: Bool = true,
+        byok: Bool = true,
+        editorPreviewFeatures: Bool = true,
         activeExperimentForFeatureFlags: ActiveExperimentForFeatureFlags = [:]
     ) {
         self.restrictedTelemetry = restrictedTelemetry
@@ -52,6 +57,8 @@ public struct FeatureFlags: Hashable, Codable {
         self.agentMode = agentMode
         self.mcp = mcp
         self.ccr = ccr
+        self.byok = byok
+        self.editorPreviewFeatures = editorPreviewFeatures
         self.activeExperimentForFeatureFlags = activeExperimentForFeatureFlags
     }
 }
@@ -69,7 +76,12 @@ public class FeatureFlagNotifierImpl: FeatureFlagNotifier {
     public var featureFlagsDidChange: PassthroughSubject<FeatureFlags, Never>
     
     init(
-        didChangeFeatureFlagsParams: DidChangeFeatureFlagsParams = .init(envelope: [:], token: [:], activeExps: [:]),
+        didChangeFeatureFlagsParams: DidChangeFeatureFlagsParams = .init(
+            envelope: [:],
+            token: [:],
+            activeExps: [:],
+            byok: nil
+        ),
         featureFlags: FeatureFlags = FeatureFlags(),
         featureFlagsDidChange: PassthroughSubject<FeatureFlags, Never> = PassthroughSubject<FeatureFlags, Never>()
     ) {
@@ -88,6 +100,8 @@ public class FeatureFlagNotifierImpl: FeatureFlagNotifier {
         self.featureFlags.agentMode = self.didChangeFeatureFlagsParams.token["agent_mode"] != "0"
         self.featureFlags.mcp = self.didChangeFeatureFlagsParams.token["mcp"] != "0"
         self.featureFlags.ccr = self.didChangeFeatureFlagsParams.token["ccr"] != "0"
+        self.featureFlags.byok = self.didChangeFeatureFlagsParams.byok != false
+        self.featureFlags.editorPreviewFeatures = self.didChangeFeatureFlagsParams.token["editor_preview_features"] != "0"
         self.featureFlags.activeExperimentForFeatureFlags = self.didChangeFeatureFlagsParams.activeExps
     }
 

@@ -22,7 +22,7 @@ public struct BYOKConfigView: View {
 
     private func expansionBinding(for provider: BYOKProvider) -> Binding<Bool> {
         Binding(
-            get: { expansionStates[provider] ?? true },
+            get: { expansionStates[provider] ?? false },
             set: { expansionStates[provider] = $0 }
         )
     }

@@ -97,7 +97,9 @@ public final class GitHubCopilotConversationService: ConversationServiceType {
 
     public func templates(workspace: WorkspaceInfo) async throws -> [ChatTemplate]? {
         guard let service = await serviceLocator.getService(from: workspace) else { return nil }
-        return try await service.templates(workspaceFolders: getWorkspaceFolders(workspace: workspace))
+        let isPreviewEnabled = FeatureFlagNotifierImpl.shared.featureFlags.editorPreviewFeatures
+        let workspaceFolders = isPreviewEnabled ? getWorkspaceFolders(workspace: workspace) : nil
+        return try await service.templates(workspaceFolders: workspaceFolders)
     }
 
     public func models(workspace: WorkspaceInfo) async throws -> [CopilotModel]? {

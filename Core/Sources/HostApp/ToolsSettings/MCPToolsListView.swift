@@ -86,9 +86,7 @@ private struct EmptyStateView: View {
 // Private components now defined in separate files:
 // MCPToolsListContainerView - in MCPToolsListContainerView.swift
 // MCPServerToolsSection - in MCPServerToolsSection.swift
-// MCPToolRow - in MCPToolRowView.swift
 
 /// Private alias for maintaining backward compatibility
 private typealias ToolsListView = MCPToolsListContainerView
 private typealias ServerToolsSection = MCPServerToolsSection
-private typealias ToolRow = MCPToolRow

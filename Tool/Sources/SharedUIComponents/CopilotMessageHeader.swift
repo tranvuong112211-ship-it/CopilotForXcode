@@ -22,7 +22,7 @@ public struct CopilotMessageHeader: View {
             }
             
             Text("GitHub Copilot")
-                .scaledFont(.system(size: 13, weight: .semibold))
+                .scaledFont(size: 13, weight: .semibold)
                 .padding(.leading, 4)
                 
             Spacer()

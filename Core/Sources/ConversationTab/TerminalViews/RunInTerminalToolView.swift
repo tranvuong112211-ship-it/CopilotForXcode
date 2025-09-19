@@ -74,7 +74,7 @@ struct RunInTerminalToolView: View {
                             .scaledFrame(width: 16, height: 16)
 
                         Text(self.title)
-                            .scaledFont(.system(size: chatFontSize, weight: .semibold))
+                            .scaledFont(size: chatFontSize, weight: .semibold)
                             .foregroundStyle(.primary)
                             .background(Color.clear)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -122,7 +122,7 @@ struct RunInTerminalToolView: View {
 
                         Text(command!)
                             .textSelection(.enabled)
-                            .scaledFont(.system(size: chatFontSize, design: .monospaced))
+                            .scaledFont(size: chatFontSize, design: .monospaced)
                             .padding(8)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .foregroundStyle(codeForegroundColor)

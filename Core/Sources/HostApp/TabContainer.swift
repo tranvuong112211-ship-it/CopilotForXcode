@@ -17,6 +17,7 @@ public struct TabContainer: View {
     @ObservedObject var toastController: ToastController
     @State private var tabBarItems = [TabBarItem]()
     @State private var isAgentModeFFEnabled = true
+    @State private var isBYOKFFEnabled = true
     @Binding var tag: TabIndex
 
     public init() {
@@ -37,12 +38,16 @@ public struct TabContainer: View {
         )
     }
     
-    private func updateAgentModeFeatureFlag() async {
+    private func updateHostAppFeatureFlags() async {
         do {
             let service = try getService()
             let featureFlags = try await service.getCopilotFeatureFlags()
             isAgentModeFFEnabled = featureFlags?.agentMode ?? true
+            isBYOKFFEnabled = featureFlags?.byok ?? true
             if hostAppStore.state.activeTabIndex == .tools && !isAgentModeFFEnabled {
+                hostAppStore.send(.setActiveTab(.general))
+            }
+            if hostAppStore.state.activeTabIndex == .byok && !isBYOKFFEnabled {
                 hostAppStore.send(.setActiveTab(.general))
             }
         } catch {
@@ -61,7 +66,9 @@ public struct TabContainer: View {
                     if isAgentModeFFEnabled {
                         MCPConfigView().tabBarItem(for: .tools)
                     }
-                    BYOKConfigView().tabBarItem(for: .byok)
+                    if isBYOKFFEnabled {
+                        BYOKConfigView().tabBarItem(for: .byok)
+                    }
                 }
                 .environment(\.tabBarTabTag, tag)
                 .frame(minHeight: 400)
@@ -76,13 +83,13 @@ public struct TabContainer: View {
             .onAppear {
                 store.send(.appear)
                 Task {
-                    await updateAgentModeFeatureFlag()
+                    await updateHostAppFeatureFlags()
                 }
             }
             .onReceive(DistributedNotificationCenter.default()
                 .publisher(for: .gitHubCopilotFeatureFlagsDidChange)) { _ in
                     Task {
-                        await updateAgentModeFeatureFlag()
+                        await updateHostAppFeatureFlags()
                     }
                 }
         }

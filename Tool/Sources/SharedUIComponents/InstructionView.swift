@@ -27,13 +27,13 @@ public struct Instruction: View {
                                 .foregroundColor(.primary)
                             
                             Text("Ask Copilot to edit your files in agent mode.\nIt will automatically use multiple requests to \nedit files, run terminal commands, and fix errors.")
-                                .scaledFont(.system(size: 14, weight: .light))
+                                .scaledFont(size: 14, weight: .light)
                                 .multilineTextAlignment(.center)
                                 .lineSpacing(4)
                         }
                         
                         Text("Copilot is powered by AI, so mistakes are possible. Review output carefully before use.")
-                            .scaledFont(.system(size: 14, weight: .light))
+                            .scaledFont(size: 14, weight: .light)
                             .multilineTextAlignment(.center)
                             .lineSpacing(4)
                     }

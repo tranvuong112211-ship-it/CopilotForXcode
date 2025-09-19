@@ -58,7 +58,7 @@ public struct ChatPanel: View {
             }
             .padding(.leading, 16)
             .padding(.bottom, 16)
-            .background(Color(nsColor: .windowBackgroundColor))
+            .background(.ultraThinMaterial)
             .onAppear {
                 chat.send(.appear)
             }
@@ -686,7 +686,7 @@ struct ChatPanelInputArea: View {
                 }
                 .overlay {
                     RoundedRectangle(cornerRadius: 6)
-                        .stroke(Color(nsColor: .controlColor), lineWidth: 1)
+                        .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
                 }
                 .background {
                     Button(action: {

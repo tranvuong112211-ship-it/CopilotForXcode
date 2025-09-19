@@ -1,5 +1,6 @@
 import Foundation
 import GitHubCopilotService
+import ConversationServiceProvider
 import Logger
 import Status
 
@@ -445,6 +446,51 @@ extension XPCExtensionService {
 
                     do {
                         let response = try JSONDecoder().decode(MCPRegistryServerDetail.self, from: data)
+                        continuation.resume(response)
+                    } catch {
+                        continuation.reject(error)
+                    }
+                }
+            } catch {
+                continuation.reject(error)
+            }
+        }
+    }
+    
+    @XPCServiceActor
+    public func getAvailableLanguageModelTools() async throws -> [LanguageModelTool]? {
+        return try await withXPCServiceConnected {
+            service, continuation in
+            service.getAvailableLanguageModelTools { data in
+                guard let data else {
+                    continuation.resume(nil)
+                    return
+                }
+
+                do {
+                    let tools = try JSONDecoder().decode([LanguageModelTool].self, from: data)
+                    continuation.resume(tools)
+                } catch {
+                    continuation.reject(error)
+                }
+            }
+        }
+    }
+    
+    @XPCServiceActor
+    public func updateToolsStatus(_ update: [ToolStatusUpdate]) async throws -> [LanguageModelTool]? {
+        return try await withXPCServiceConnected {
+            service, continuation in
+            do {
+                let data = try JSONEncoder().encode(update)
+                service.updateToolsStatus(tools: data) { data in
+                    guard let data else {
+                        continuation.resume(nil)
+                        return
+                    }
+
+                    do {
+                        let response = try JSONDecoder().decode([LanguageModelTool].self, from: data)
                         continuation.resume(response)
                     } catch {
                         continuation.reject(error)

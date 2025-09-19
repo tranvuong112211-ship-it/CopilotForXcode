@@ -97,72 +97,53 @@ struct BYOKProviderConfigView: View {
     // MARK: - UI Components
 
     private var ProviderLabelView: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "chevron.right").font(.footnote.bold())
-                .foregroundColor(.secondary)
-                .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                .animation(.easeInOut(duration: 0.3), value: isExpanded)
-                .buttonStyle(.borderless)
-                .opacity(hasApiKey ? 1 : 0)
-                .allowsHitTesting(hasApiKey)
-
-            HStack(spacing: 8) {
-                Text(provider.title)
-                    .foregroundColor(
-                        hasApiKey ? .primary : Color(
-                            nsColor: colorScheme == .light ? .tertiaryLabelColor : .secondaryLabelColor
-                        )
-                    )
-                    .bold() +
-                    Text(hasModels ? " (\(allModels.filter { $0.isRegistered }.count) of \(allModels.count) Enabled)" : "")
-                    .foregroundColor(.primary)
-            }
-            .padding(.vertical, 4)
-        }
+        Text(provider.title)
+            .foregroundColor(
+                hasApiKey ? .primary : Color(
+                    nsColor: colorScheme == .light ? .tertiaryLabelColor : .secondaryLabelColor
+                )
+            )
+            .bold() +
+            Text(hasModels ? " (\(allModels.filter { $0.isRegistered }.count) of \(allModels.count) Enabled)" : "")
+            .foregroundColor(.primary)
     }
 
     private var ProviderHeaderRowView: some View {
-        HStack(alignment: .center, spacing: 16) {
-            ProviderLabelView
-
-            Spacer()
-
-            if let errorMessage = errorMessage {
-                Badge(text: "Can't connect. Check your API key or network.", level: .danger, icon: "xmark.circle.fill")
-                    .help("Unable to connect to \(provider.title). \(errorMessage) Refresh or recheck your key setup.")
-            }
-
-            if hasApiKey {
-                if dataManager.isLoadingProvider(provider) {
-                    ProgressView().controlSize(.small)
-                } else {
-                    ConfiguredProviderActions
+        DisclosureSettingsRow(
+            isExpanded: $isExpanded,
+            isEnabled: hasApiKey,
+            accessibilityLabel: { expanded in "\(provider.title) \(expanded ? "collapse" : "expand")" },
+            onToggle: { wasExpanded, nowExpanded in
+                if wasExpanded && !nowExpanded && isSearchBarVisible {
+                    searchText = ""
+                    withAnimation(.easeInOut) { isSearchBarVisible = false }
                 }
-            } else {
-                UnconfiguredProviderAction
-            }
-        }
-        .padding(.leading, 20)
-        .padding(.trailing, 24)
-        .padding(.vertical, 8)
-        .background(QuaternarySystemFillColor.opacity(0.75))
-        .contentShape(Rectangle())
-        .onTapGesture {
-            guard hasApiKey else { return }
-            let wasExpanded = isExpanded
-            withAnimation(.easeInOut) {
-                isExpanded.toggle()
-            }
-            // If we just collapsed, and the search bar was open, reset it.
-            if wasExpanded && !isExpanded && isSearchBarVisible {
-                searchText = ""
-                withAnimation(.easeInOut) {
-                    isSearchBarVisible = false
+            },
+            title: { ProviderLabelView },
+            actions: {
+                Group {
+                    if let errorMessage = errorMessage {
+                        Badge(
+                            text: "Can't connect. Check your API key or network.",
+                            level: .danger,
+                            icon: "xmark.circle.fill"
+                        )
+                        .help("Unable to connect to \(provider.title). \(errorMessage) Refresh or recheck your key setup.")
+                    }
+                    if hasApiKey {
+                        if dataManager.isLoadingProvider(provider) {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            ConfiguredProviderActions
+                        }
+                    } else {
+                        UnconfiguredProviderAction
+                    }
                 }
+                .padding(.trailing, 4)
+                .frame(height: 30)
             }
-        }
-        .accessibilityAddTraits(.isButton)
-        .accessibilityLabel("\(provider.title) \(isExpanded ? "collapse" : "expand")")
+        )
     }
 
     @ViewBuilder

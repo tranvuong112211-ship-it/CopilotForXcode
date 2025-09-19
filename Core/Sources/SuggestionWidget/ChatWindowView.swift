@@ -59,7 +59,7 @@ struct ChatView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            Rectangle().fill(.regularMaterial).frame(height: 28)
+            Rectangle().fill(Material.bar).frame(height: 28)
 
             Divider()
 
@@ -67,7 +67,7 @@ struct ChatView: View {
                 VStack(spacing: 0) {
                     ChatBar(store: store, isChatHistoryVisible: $isChatHistoryVisible)
                         .frame(height: 32)
-                        .background(Color(nsColor: .windowBackgroundColor))
+                        .background(.ultraThinMaterial)
 
                     Divider()
 
@@ -89,7 +89,7 @@ struct ChatHistoryViewWrapper: View {
     var body: some View {
         WithPerceptionTracking {
             VStack(spacing: 0) {
-                Rectangle().fill(.regularMaterial).frame(height: 28)
+                Rectangle().fill(Material.bar).frame(height: 28)
 
                 Divider()
                 
@@ -97,7 +97,7 @@ struct ChatHistoryViewWrapper: View {
                     store: store,
                     isChatHistoryVisible: $isChatHistoryVisible
                 )
-                .background(Color(nsColor: .windowBackgroundColor))
+                .background(.ultraThinMaterial)
                 .frame(
                     maxWidth: .infinity,
                     maxHeight: .infinity
@@ -136,7 +136,7 @@ struct ChatLoadingView: View {
         .xcodeStyleFrame(cornerRadius: 10)
         .ignoresSafeArea(edges: .top)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(.ultraThinMaterial)
     }
 }
 
@@ -325,7 +325,7 @@ struct ChatBar: View {
                             .scaledFrame(width: 24, height: 24)
 
                     Text(store.chatHistory.selectedWorkspaceName!)
-                        .scaledFont(.system(size: 13, weight: .bold))
+                        .scaledFont(size: 13, weight: .bold)
                         .padding(.leading, 4)
                         .truncationMode(.tail)
                         .frame(maxWidth: 192, alignment: .leading)

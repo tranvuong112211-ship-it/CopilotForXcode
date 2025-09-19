@@ -68,7 +68,7 @@ public class AppState {
 
     public func update<T: Codable>(key: String, value: T) {
         queue.async {
-            let userName = Status.currentUser() ?? ""
+            let userName = UserDefaults.shared.value(for: \.currentUserName)
             self.initCacheForUserIfNeeded(userName)
             self.cache[userName]![key] = JSONValue.convertToJSONValue(value)
             self.saveCacheForUser(userName)
@@ -77,7 +77,7 @@ public class AppState {
 
     public func get(key: String) -> JSONValue? {
         return queue.sync {
-            let userName = Status.currentUser() ?? ""
+            let userName = UserDefaults.shared.value(for: \.currentUserName)
             initCacheForUserIfNeeded(userName)
             return (self.cache[userName] ?? [:])[key]
         }
@@ -88,7 +88,8 @@ public class AppState {
     }
 
     private func saveCacheForUser(_ userName: String? = nil) {
-        if let user = userName ?? Status.currentUser(), !user.isEmpty { // save cache for non-empty user
+        let user = userName ?? UserDefaults.shared.value(for: \.currentUserName)
+        if !user.isEmpty { // save cache for non-empty user
             let cacheFilePath = configFilePath(userName: user)
             do {
                 let data = try JSONEncoder().encode(self.cache[user] ?? [:])
@@ -100,8 +101,8 @@ public class AppState {
     }
 
     private func initCacheForUserIfNeeded(_ userName: String? = nil) {
-        if let user = userName ?? Status.currentUser(), !user.isEmpty,
-           loadStatus[user] != true { // load cache for non-empty user
+        let user = userName ?? UserDefaults.shared.value(for: \.currentUserName)
+        if !user.isEmpty, loadStatus[user] != true { // load cache for non-empty user
             self.loadStatus[user] = true
             self.cache[user] = [:]
             let cacheFilePath = configFilePath(userName: user)

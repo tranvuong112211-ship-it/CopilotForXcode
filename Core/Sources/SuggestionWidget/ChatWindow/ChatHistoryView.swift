@@ -42,7 +42,7 @@ struct ChatHistoryView: View {
         var body: some View {
             HStack {
                 Text("Chat History")
-                    .scaledFont(.system(size: 13, weight: .bold))
+                    .scaledFont(size: 13, weight: .bold)
                     .lineLimit(nil)
                 
                 Spacer()
@@ -174,7 +174,7 @@ struct ChatHistoryItemView: View {
                             // directly get title from chat tab info
                             Text(previewInfo.title ?? "New Chat")
                                 .frame(alignment: .leading)
-                                .scaledFont(.system(size: 14, weight: .semibold))
+                                .scaledFont(size: 14, weight: .semibold)
                                 .foregroundColor(.primary)
                                 .lineLimit(1)
                             
@@ -189,7 +189,7 @@ struct ChatHistoryItemView: View {
                         HStack(spacing: 0) {
                             Text(formatDate(previewInfo.updatedAt))
                                 .frame(alignment: .leading)
-                                .scaledFont(.system(size: 13, weight: .regular))
+                                .scaledFont(size: 13, weight: .regular)
                                 .foregroundColor(.secondary)
                                 .lineLimit(1)
                             
@@ -228,7 +228,7 @@ struct ChatHistoryItemView: View {
                     nsColor: .controlColor
                         .withAlphaComponent(colorScheme == .dark ? 0.1 : 0.55)
                 ),
-                cornerRadius: 4,
+                cornerRadius: 8,
                 showBorder: isHovered,
                 borderColor: Color(nsColor: .separatorColor)
             )

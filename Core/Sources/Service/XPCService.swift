@@ -9,6 +9,7 @@ import XPCShared
 import HostAppActivator
 import XcodeInspector
 import GitHubCopilotViewModel
+import ConversationServiceProvider
 
 public class XPCService: NSObject, XPCServiceProtocol {
     // MARK: - Service
@@ -352,6 +353,49 @@ public class XPCService: NSObject, XPCServiceProtocol {
             } catch {
                 Logger.service.error("Failed to get MCP Registry servers: \(error)")
                 reply(nil, error)
+            }
+        }
+    }
+
+    // MARK: - Language Model Tools
+    public func getAvailableLanguageModelTools(withReply reply: @escaping (Data?) -> Void) {
+        let availableLanguageModelTools = CopilotLanguageModelToolManager.getAvailableLanguageModelTools()
+        if let availableLanguageModelTools = availableLanguageModelTools {
+            // Encode and send the data
+            let data = try? JSONEncoder().encode(availableLanguageModelTools)
+            reply(data)
+        } else {
+            reply(nil)
+        }
+    }
+    
+    public func updateToolsStatus(tools: Data, withReply reply: @escaping (Data?) -> Void) {
+        // Decode the data
+        let decoder = JSONDecoder()
+        var toolStatusUpdates: [ToolStatusUpdate] = []
+        do {
+            toolStatusUpdates = try decoder.decode([ToolStatusUpdate].self, from: tools)
+            if toolStatusUpdates.isEmpty {
+                let emptyData = try JSONEncoder().encode([LanguageModelTool]())
+                reply(emptyData)
+                return
+            }
+        } catch {
+            Logger.service.error("Failed to decode built-in tools: \(error)")
+            reply(nil)
+            return
+        }
+
+        Task { @MainActor in
+            let updatedTools = await GitHubCopilotService.updateAllCLSTools(tools: toolStatusUpdates)
+            
+            // Encode and return the updated tools
+            do {
+                let data = try JSONEncoder().encode(updatedTools)
+                reply(data)
+            } catch {
+                Logger.service.error("Failed to encode updated tools: \(error)")
+                reply(nil)
             }
         }
     }

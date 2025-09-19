@@ -95,6 +95,29 @@ public struct RegisterToolsParams: Codable, Equatable {
     }
 }
 
+public struct UpdateToolsStatusParams: Codable, Equatable {
+    public let tools: [ToolStatusUpdate]
+
+    public init(tools: [ToolStatusUpdate]) {
+        self.tools = tools
+    }
+}
+
+public struct ToolStatusUpdate: Codable, Equatable {
+    public let name: String
+    public let status: ToolStatus
+    
+    public init(name: String, status: ToolStatus) {
+        self.name = name
+        self.status = status
+    }
+}
+
+public enum ToolStatus: String, Codable, Equatable, Hashable {
+    case enabled = "enabled"
+    case disabled = "disabled"
+}
+
 public struct LanguageModelToolInformation: Codable, Equatable {
     /// The name of the tool.
     public let name: String
@@ -156,6 +179,68 @@ public struct LanguageModelToolConfirmationMessages: Codable, Equatable {
         self.title = title
         self.message = message
     }
+}
+
+public struct LanguageModelTool: Codable, Equatable {
+    public let id: String
+    public let type: ToolType
+    public let toolProvider: ToolProvider
+    public let nameForModel: String
+    public let name: String
+    public let displayName: String?
+    public let description: String?
+    public let displayDescription: String
+    public let inputSchema: [String: AnyCodable]?
+    public let annotations: ToolAnnotations?
+    public let status: ToolStatus
+    
+    public init(
+        id: String,
+        type: ToolType,
+        toolProvider: ToolProvider,
+        nameForModel: String,
+        name: String,
+        displayName: String?,
+        description: String?,
+        displayDescription: String,
+        inputSchema: [String : AnyCodable]?,
+        annotations: ToolAnnotations?,
+        status: ToolStatus
+    ) {
+        self.id = id
+        self.type = type
+        self.toolProvider = toolProvider
+        self.nameForModel = nameForModel
+        self.name = name
+        self.displayName = displayName
+        self.description = description
+        self.displayDescription = displayDescription
+        self.inputSchema = inputSchema
+        self.annotations = annotations
+        self.status = status
+    }
+}
+
+public enum ToolType: String, Codable, CaseIterable {
+    case shared = "shared"
+    case client = "client"
+    case mcp = "mcp"
+}
+
+public struct ToolProvider: Codable, Equatable {
+    public let id: String
+    public let displayName: String
+    public let displayNamePrefix: String?
+    public let description: String
+    public let isFirstPartyTool: Bool
+}
+
+public struct ToolAnnotations: Codable, Equatable {
+    public let title: String?
+    public let readOnlyHint: Bool?
+    public let destructiveHint: Bool?
+    public let idempotentHint: Bool?
+    public let openWorldHint: Bool?
 }
 
 public struct InvokeClientToolParams: Codable, Equatable {

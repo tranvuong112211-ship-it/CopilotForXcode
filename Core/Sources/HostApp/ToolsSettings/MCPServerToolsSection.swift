@@ -47,12 +47,15 @@ struct MCPServerToolsSection: View {
         VStack(spacing: 0) {
             divider
             ForEach(serverTools.tools, id: \.name) { tool in
-                MCPToolRow(
-                    tool: tool,
+                ToolRow(
+                    toolName: tool.name,
+                    toolDescription: tool.description,
+                    toolStatus: tool._status,
                     isServerEnabled: isServerEnabled,
                     isToolEnabled: toolBindingFor(tool),
                     onToolToggleChanged: { handleToolToggleChange(tool: tool, isEnabled: $0) }
                 )
+                .padding(.leading, 36)
             }
         }
         .onChange(of: serverTools) { newValue in

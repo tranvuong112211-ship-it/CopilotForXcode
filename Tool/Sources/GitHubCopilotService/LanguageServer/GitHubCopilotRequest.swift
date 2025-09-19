@@ -454,7 +454,7 @@ enum GitHubCopilotRequest {
     }
 
     struct RegisterTools: GitHubCopilotRequestType {
-        struct Response: Codable {}
+        typealias Response = Array<LanguageModelTool>
 
         var params: RegisterToolsParams
 
@@ -462,6 +462,18 @@ enum GitHubCopilotRequest {
             let data = (try? JSONEncoder().encode(params)) ?? Data()
             let dict = (try? JSONDecoder().decode(JSONValue.self, from: data)) ?? .hash([:])
             return .custom("conversation/registerTools", dict, ClientRequest.NullHandler)
+        }
+    }
+    
+    struct UpdateToolsStatus: GitHubCopilotRequestType {
+        typealias Response = Array<LanguageModelTool>
+
+        var params: UpdateToolsStatusParams
+
+        var request: ClientRequest {
+            let data = (try? JSONEncoder().encode(params)) ?? Data()
+            let dict = (try? JSONDecoder().decode(JSONValue.self, from: data)) ?? .hash([:])
+            return .custom("conversation/updateToolsStatus", dict, ClientRequest.NullHandler)
         }
     }
 
