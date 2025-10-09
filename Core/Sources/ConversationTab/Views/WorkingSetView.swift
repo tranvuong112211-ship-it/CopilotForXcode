@@ -7,6 +7,7 @@ import JSONRPC
 import SharedUIComponents
 import OrderedCollections
 import ConversationServiceProvider
+import ChatAPIService
 
 struct WorkingSetView: View {
     let chat: StoreOf<Chat>

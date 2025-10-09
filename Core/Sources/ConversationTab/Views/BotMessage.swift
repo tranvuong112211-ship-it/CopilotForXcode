@@ -216,8 +216,14 @@ struct BotMessage: View {
             return false
         }
         
-        // Only show working status for the current bot message being received
-        return chat.isReceivingMessage && isLatestAssistantMessage()
+        guard chat.isReceivingMessage && isLatestAssistantMessage(), let requestType = chat.requestType else {
+            return false
+        }
+        
+        switch requestType {
+        case .conversation: return true
+        case .codeReview: return codeReviewRound != nil
+        }
     }
     
     private func shouldShowToolBar() -> Bool {

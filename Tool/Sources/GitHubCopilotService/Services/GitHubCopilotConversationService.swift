@@ -79,6 +79,12 @@ public final class GitHubCopilotConversationService: ConversationServiceType {
                                             agentMode: request.agentMode)
     }
     
+    public func deleteTurn(with conversationId: String, turnId: String, workspace: WorkspaceInfo) async throws {
+        guard let service = await serviceLocator.getService(from: workspace) else { return }
+        
+        return try await service.deleteTurn(conversationId: conversationId, turnId: turnId)
+    }
+    
     public func cancelProgress(_ workDoneToken: String, workspace: WorkspaceInfo) async throws {
         guard let service = await serviceLocator.getService(from: workspace) else { return }
         
@@ -120,10 +126,17 @@ public final class GitHubCopilotConversationService: ConversationServiceType {
         return try await service.agents()
     }
     
-    public func reviewChanges(workspace: WorkspaceInfo, params: ReviewChangesParams) async throws -> CodeReviewResult? {
+    public func reviewChanges(
+        workspace: WorkspaceInfo,
+        changes: [ReviewChangesParams.Change]
+    ) async throws -> CodeReviewResult? {
         guard let service = await serviceLocator.getService(from: workspace) else { return nil }
         
-        return try await service.reviewChanges(params: params)
+        return try await service
+            .reviewChanges(params: .init(
+                changes: changes,
+                workspaceFolders: getWorkspaceFolders(workspace: workspace))
+            )
     }
 }
 

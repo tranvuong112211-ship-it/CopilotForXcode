@@ -453,9 +453,11 @@ public struct ReviewChangesParams: Codable, Equatable {
     }
     
     public let changes: [Change]
+    public let workspaceFolders: [WorkspaceFolder]?
     
-    public init(changes: [Change]) {
+    public init(changes: [Change], workspaceFolders: [WorkspaceFolder]? = nil) {
         self.changes = changes
+        self.workspaceFolders = workspaceFolders
     }
 }
 

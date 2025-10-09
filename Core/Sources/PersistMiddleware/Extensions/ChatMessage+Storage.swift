@@ -16,6 +16,7 @@ extension ChatMessage {
         var steps: [ConversationProgressStep]
         var editAgentRounds: [AgentRound]
         var panelMessages: [CopilotShowMessageParams]
+        var fileEdits: [FileEdit]
 
         // Custom decoder to provide default value for steps
         init(from decoder: Decoder) throws {
@@ -29,6 +30,7 @@ extension ChatMessage {
             steps = try container.decodeIfPresent([ConversationProgressStep].self, forKey: .steps) ?? []
             editAgentRounds = try container.decodeIfPresent([AgentRound].self, forKey: .editAgentRounds) ?? []
             panelMessages = try container.decodeIfPresent([CopilotShowMessageParams].self, forKey: .panelMessages) ?? []
+            fileEdits = try container.decodeIfPresent([FileEdit].self, forKey: .fileEdits) ?? []
         }
 
         // Default memberwise init for encoding
@@ -41,7 +43,8 @@ extension ChatMessage {
             errorMessages: [String] = [],
             steps: [ConversationProgressStep]?,
             editAgentRounds: [AgentRound]? = nil,
-            panelMessages: [CopilotShowMessageParams]? = nil
+            panelMessages: [CopilotShowMessageParams]? = nil,
+            fileEdits: [FileEdit]? = nil
         ) {
             self.content = content
             self.rating = rating
@@ -52,6 +55,7 @@ extension ChatMessage {
             self.steps = steps ?? []
             self.editAgentRounds = editAgentRounds ?? []
             self.panelMessages = panelMessages ?? []
+            self.fileEdits = fileEdits ?? []
         }
     }
     
@@ -65,7 +69,8 @@ extension ChatMessage {
             errorMessages: self.errorMessages,
             steps: self.steps,
             editAgentRounds: self.editAgentRounds,
-            panelMessages: self.panelMessages
+            panelMessages: self.panelMessages,
+            fileEdits: self.fileEdits
         )
         
         // TODO: handle exception
@@ -98,6 +103,7 @@ extension ChatMessage {
                     steps: turnItemData.steps,
                     editAgentRounds: turnItemData.editAgentRounds,
                     panelMessages: turnItemData.panelMessages,
+                    fileEdits: turnItemData.fileEdits,
                     createdAt: turnItem.createdAt,
                     updatedAt: turnItem.updatedAt
                 )

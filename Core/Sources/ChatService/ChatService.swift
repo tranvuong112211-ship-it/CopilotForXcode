@@ -48,37 +48,6 @@ struct ToolCallRequest {
     let completion: (AnyJSONRPCResponse) -> Void
 }
 
-public struct FileEdit: Equatable {
-    
-    public enum Status: String {
-        case none = "none"
-        case kept = "kept"
-        case undone = "undone"
-    }
-    
-    public let fileURL: URL
-    public let originalContent: String
-    public var modifiedContent: String
-    public var status: Status
-    
-    /// Different toolName, the different undo logic. Like `insert_edit_into_file` and `create_file`
-    public var toolName: ToolName
-    
-    public init(
-        fileURL: URL,
-        originalContent: String,
-        modifiedContent: String,
-        status: Status = .none,
-        toolName: ToolName
-    ) {
-        self.fileURL = fileURL
-        self.originalContent = originalContent
-        self.modifiedContent = modifiedContent
-        self.status = status
-        self.toolName = toolName
-    }
-}
-
 public final class ChatService: ChatServiceType, ObservableObject {
     
     public enum RequestType: String, Equatable {
@@ -207,33 +176,21 @@ public final class ChatService: ChatServiceType, ObservableObject {
                 return
             }
 
-            copilotTool.invokeTool(request, completion: completion, chatHistoryUpdater: self?.appendToolCallHistory, contextProvider: self)
+            copilotTool.invokeTool(request, completion: completion, contextProvider: self)
         }).store(in: &cancellables)
     }
 
-    private func appendToolCallHistory(turnId: String, editAgentRounds: [AgentRound]) {
+    func appendToolCallHistory(turnId: String, editAgentRounds: [AgentRound], fileEdits: [FileEdit] = []) {
         let chatTabId = self.chatTabInfo.id
         Task {
             let message = ChatMessage(
                 assistantMessageWithId: turnId,
                 chatTabID: chatTabId,
-                editAgentRounds: editAgentRounds
+                editAgentRounds: editAgentRounds,
+                fileEdits: fileEdits
             )
 
             await self.memory.appendMessage(message)
-        }
-    }
-    
-    public func updateFileEdits(by fileEdit: FileEdit) {
-        if let existingFileEdit = self.fileEditMap[fileEdit.fileURL] {
-            self.fileEditMap[fileEdit.fileURL] = .init(
-                fileURL: fileEdit.fileURL,
-                originalContent: existingFileEdit.originalContent,
-                modifiedContent: fileEdit.modifiedContent,
-                toolName: existingFileEdit.toolName
-            )
-        } else {
-            self.fileEditMap[fileEdit.fileURL] = fileEdit
         }
     }
 
@@ -542,10 +499,17 @@ public final class ChatService: ChatServiceType, ObservableObject {
         deleteAllChatMessagesFromStorage(messageIds)
         resetOngoingRequest()
     }
-
-    public func deleteMessage(id: String) async {
-        await memory.removeMessage(id)
-        deleteChatMessageFromStorage(id)
+    
+    public func deleteMessages(ids: [String]) async {
+        let turnIdsFromMessages = await memory.history
+            .filter { ids.contains($0.id) }
+            .compactMap { $0.clsTurnID }
+            .map { String($0) }
+        let turnIds = Array(Set(turnIdsFromMessages))
+        
+        await memory.removeMessages(ids)
+        await deleteTurns(turnIds)
+        deleteAllChatMessagesFromStorage(ids)
     }
 
     public func resendMessage(id: String, model: String? = nil, modelProviderName: String? = nil) async throws {
@@ -772,12 +736,22 @@ public final class ChatService: ChatServiceType, ObservableObject {
             // CLS Error Code 402: reached monthly chat messages limit
             if CLSError.code == 402 {
                 Task {
+                    let selectedModel = lastUserRequest?.model
+                    let selectedModelProviderName = lastUserRequest?.modelProviderName
+                    
+                    var errorMessageText: String
+                    if let selectedModel = selectedModel, let selectedModelProviderName = selectedModelProviderName {
+                        errorMessageText = "You've reached your quota limit for your BYOK model \(selectedModel). Please check with \(selectedModelProviderName) for more information."
+                    } else {
+                        errorMessageText = CLSError.message
+                    }
+
                     await Status.shared
-                        .updateCLSStatus(.warning, busy: false, message: CLSError.message)
+                        .updateCLSStatus(.warning, busy: false, message: errorMessageText)
                     let errorMessage = ChatMessage(
                         errorMessageWithId: progress.turnId,
                         chatTabID: chatTabInfo.id,
-                        panelMessages: [.init(type: .error, title: String(CLSError.code ?? 0), message: CLSError.message, location: .Panel)]
+                        panelMessages: [.init(type: .error, title: String(CLSError.code ?? 0), message: errorMessageText, location: .Panel)]
                     )
                     // will persist in resetongoingRequest()
                     await memory.appendMessage(errorMessage)
@@ -944,37 +918,21 @@ public final class ChatService: ChatServiceType, ObservableObject {
         }
     }
     
-    // MARK: - File Edit
-    public func undoFileEdit(for fileURL: URL) throws {
-        guard let fileEdit = self.fileEditMap[fileURL],
-              fileEdit.status == .none
-        else { return }
-        
-        switch fileEdit.toolName {
-        case .insertEditIntoFile:
-            InsertEditIntoFileTool.applyEdit(for: fileURL, content: fileEdit.originalContent, contextProvider: self)
-        case .createFile:
-            try CreateFileTool.undo(for: fileURL)
-        default:
+    private func deleteTurns(_ turnIds: [String]) async {
+        guard !turnIds.isEmpty, let conversationId = conversationId else {
             return
         }
         
-        self.fileEditMap[fileURL]!.status = .undone
-    }
-    
-    public func keepFileEdit(for fileURL: URL) {
-        guard let fileEdit = self.fileEditMap[fileURL], fileEdit.status == .none
-        else { return }
-        self.fileEditMap[fileURL]!.status = .kept
-    }
-    
-    public func resetFileEdits() {
-        self.fileEditMap = [:]
-    }
-    
-    public func discardFileEdit(for fileURL: URL) throws {
-        try self.undoFileEdit(for: fileURL)
-        self.fileEditMap.removeValue(forKey: fileURL)
+        let workspaceURL = getWorkspaceURL()
+        
+        for turnId in turnIds {
+            do {
+                try await conversationProvider?
+                    .deleteTurn(with: conversationId, turnId: turnId, workspaceURL: workspaceURL)
+            } catch {
+                Logger.client.error("Failed to delete turn: \(error)")
+            }
+        }
     }
 }
 

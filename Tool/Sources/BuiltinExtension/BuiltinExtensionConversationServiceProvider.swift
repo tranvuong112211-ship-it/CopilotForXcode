@@ -86,6 +86,19 @@ public final class BuiltinExtensionConversationServiceProvider<
                 workspace: workspaceInfo
             )
     }
+    
+    public func deleteTurn(with conversationId: String, turnId: String, workspaceURL: URL?) async throws {
+        guard let conversationService else {
+            Logger.service.error("Builtin chat service not found.")
+            return
+        }
+        guard let workspaceInfo = await activeWorkspace(workspaceURL) else {
+            Logger.service.error("Could not get active workspace info")
+            return
+        }
+        
+        try await conversationService.deleteTurn(with: conversationId, turnId: turnId, workspace: workspaceInfo)
+    }
 
     public func stopReceivingMessage(_ workDoneToken: String, workspaceURL: URL?) async throws {
         guard let conversationService else {
@@ -172,7 +185,7 @@ public final class BuiltinExtensionConversationServiceProvider<
         return (try? await conversationService.agents(workspace: workspaceInfo))
     }
     
-    public func reviewChanges(_ params: ReviewChangesParams) async throws -> CodeReviewResult? {
+    public func reviewChanges(_ changes: [ReviewChangesParams.Change]) async throws -> CodeReviewResult? {
         guard let conversationService else {
             Logger.service.error("Builtin chat service not found.")
             return nil
@@ -182,6 +195,6 @@ public final class BuiltinExtensionConversationServiceProvider<
             return nil
         }
         
-        return (try? await conversationService.reviewChanges(workspace: workspaceInfo, params: params))
+        return (try? await conversationService.reviewChanges(workspace: workspaceInfo, changes: changes))
     }
 }

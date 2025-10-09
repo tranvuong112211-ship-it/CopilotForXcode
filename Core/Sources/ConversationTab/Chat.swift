@@ -32,6 +32,7 @@ public struct DisplayedChatMessage: Equatable {
     public var editAgentRounds: [AgentRound] = []
     public var panelMessages: [CopilotShowMessageParams] = []
     public var codeReviewRound: CodeReviewRound? = nil
+    public var fileEdits: [FileEdit] = []
 
     public init(
         id: String,
@@ -45,7 +46,8 @@ public struct DisplayedChatMessage: Equatable {
         steps: [ConversationProgressStep] = [],
         editAgentRounds: [AgentRound] = [],
         panelMessages: [CopilotShowMessageParams] = [],
-        codeReviewRound: CodeReviewRound? = nil
+        codeReviewRound: CodeReviewRound? = nil,
+        fileEdits: [FileEdit] = []
     ) {
         self.id = id
         self.role = role
@@ -59,6 +61,7 @@ public struct DisplayedChatMessage: Equatable {
         self.editAgentRounds = editAgentRounds
         self.panelMessages = panelMessages
         self.codeReviewRound = codeReviewRound
+        self.fileEdits = fileEdits
     }
 }
 
@@ -180,12 +183,53 @@ struct Chat {
         var diffViewerController: DiffViewWindowController? = nil
         var isAgentMode: Bool = AppState.shared.isAgentModeEnabled()
         var workspaceURL: URL? = nil
+        
+        // The following messages after check point message will hide on ChatPanel
+        var pendingCheckpointMessageId: String? = nil
+        // The chat context before the first restoring
+        var pendingCheckpointContext: ChatContext? = nil
+        var messagesAfterCheckpoint: [DisplayedChatMessage] {
+            guard let pendingCheckpointMessageId, let index = history.firstIndex(where: { $0.id == pendingCheckpointMessageId }) else {
+                return []
+            }
+            
+            let nextIndex = index + 1
+            guard nextIndex < history.count else {
+                return []
+            }
+            
+            // The order matters for restoring / redoing file edits
+            return Array(history[nextIndex...])
+        }
+        
         enum Field: String, Hashable {
             case textField
             case fileSearchBar
         }
         
         var codeReviewState = ConversationCodeReviewFeature.State()
+        
+        func getMessages(after afterMessageId: String, through throughMessageId: String?) -> [DisplayedChatMessage] {
+            guard let afterMessageIdIndex = history.firstIndex(where: { $0.id == afterMessageId }) else {
+                return []
+            }
+            
+            let startIndex = afterMessageIdIndex + 1
+            
+            let endIndex: Int
+            if let throughMessageId = throughMessageId,
+               let throughMessageIdIndex = history.firstIndex(where: { $0.id == throughMessageId }) {
+                endIndex = throughMessageIdIndex + 1
+            } else {
+                endIndex = history.count
+            }
+            
+            guard startIndex < endIndex, startIndex < history.count else {
+                return []
+            }
+            
+            return Array(history[startIndex..<endIndex])
+        }
     }
 
     enum Action: Equatable, BindableAction {
@@ -254,6 +298,13 @@ struct Chat {
         // External Action
         case observeFixErrorNotification
         case fixEditorErrorIssue(EditorErrorIssue)
+        
+        // Check Point
+        case restoreCheckPoint(String)
+        case restoreFileEdits
+        case undoCheckPoint // Revert the restore
+        case discardCheckPoint
+        case reloadWorkingset(DisplayedChatMessage)
     }
 
     let service: ChatService
@@ -329,6 +380,7 @@ struct Chat {
                 
                 return .run { send in
                     await send(.resetContextProvider)
+                    await send(.discardCheckPoint)
                     
                     try await service
                         .send(
@@ -375,6 +427,7 @@ struct Chat {
                 
                 return .run { send in
                     await send(.resetContextProvider)
+                    await send(.discardCheckPoint)
 
                     try await service
                         .send(
@@ -408,7 +461,7 @@ struct Chat {
 
             case let .deleteMessageButtonTapped(id):
                 return .run { _ in
-                    await service.deleteMessage(id: id)
+                    await service.deleteMessages(ids: [id])
                 }
 
             case let .resendMessageButtonTapped(id):
@@ -541,7 +594,8 @@ struct Chat {
                         steps: message.steps,
                         editAgentRounds: message.editAgentRounds,
                         panelMessages: message.panelMessages,
-                        codeReviewRound: message.codeReviewRound
+                        codeReviewRound: message.codeReviewRound,
+                        fileEdits: message.fileEdits
                     ))
 
                     return all
@@ -690,6 +744,12 @@ struct Chat {
             case let .agentModeChanged(isAgentMode):
                 state.isAgentMode = isAgentMode
                 return .none
+            
+            // MARK: - Code Review
+            case let .codeReview(.request(group)):
+                return .run { send in
+                    await send(.discardCheckPoint)
+                }
                 
             case .codeReview:
                 return .none
@@ -790,6 +850,141 @@ struct Chat {
                         userLanguage: chatResponseLocale
                     )
                 }.cancellable(id: CancelID.sendMessage(self.id))
+                
+            // MARK: - Check Point
+            
+            case let .restoreCheckPoint(messageId):
+                guard let message = state.history.first(where: { $0.id == messageId }) else {
+                    return .none
+                }
+                
+                if state.pendingCheckpointContext == nil {
+                    state.pendingCheckpointContext = state.chatContext
+                }
+                state.pendingCheckpointMessageId = messageId
+                
+                // Reload the chat context
+                let messagesAfterCheckpoint = state.messagesAfterCheckpoint
+                if !messagesAfterCheckpoint.isEmpty,
+                   let userMessage = messagesAfterCheckpoint.first,
+                   userMessage.role == .user,
+                   let projectURL = service.getProjectRootURL()
+                {
+                    state.chatContext = .from(userMessage, projectURL: projectURL)
+                }
+                
+                return .run { send in 
+                    await send(.restoreFileEdits)
+                    await send(.reloadWorkingset(message))
+                    await send(.stopRespondingButtonTapped)
+                }
+                
+            case .restoreFileEdits:
+                // Revert file edits in messages after checkpoint
+                let messagesAfterCheckpoint = state.messagesAfterCheckpoint
+                guard !messagesAfterCheckpoint.isEmpty else {
+                    return .none
+                }
+                
+                return .run { _ in 
+                    var restoredURLs = Set<URL>()
+                    let fileManager = FileManager.default
+                    
+                    // Revert the file edit. From the oldest to newest
+                    for message in messagesAfterCheckpoint {
+                        let fileEdits = message.fileEdits
+                        guard !fileEdits.isEmpty else {
+                            continue
+                        }
+                        
+                        for fileEdit in fileEdits {
+                            guard !restoredURLs.contains(fileEdit.fileURL) else {
+                                continue
+                            }
+                            restoredURLs.insert(fileEdit.fileURL)
+                            
+                            do {
+                                switch fileEdit.toolName {
+                                case .createFile:
+                                    try fileManager.removeItem(at: fileEdit.fileURL)
+                                case .insertEditIntoFile:
+                                    try fileEdit.originalContent.write(to: fileEdit.fileURL, atomically: true, encoding: .utf8)
+                                default:
+                                    break
+                                }
+                            } catch {
+                                Logger.client.error(">>> Failed to restore file Edit: \(error)")
+                            }
+                        }
+                    }
+                }
+                
+            case .undoCheckPoint:
+                if let context = state.pendingCheckpointContext {
+                    state.chatContext = context
+                    state.pendingCheckpointContext = nil
+                }
+                let reversedMessagesAfterCheckpoint = Array(state.messagesAfterCheckpoint.reversed())
+                
+                state.pendingCheckpointMessageId = nil
+                
+                // Redo file edits in messages after checkpoint
+                guard !reversedMessagesAfterCheckpoint.isEmpty else {
+                    return .none
+                }
+                
+                return .run { send in 
+                    var redoedURL = Set<URL>()
+                    let lastMessage = reversedMessagesAfterCheckpoint.first
+                    
+                    for message in reversedMessagesAfterCheckpoint {
+                        let fileEdits = message.fileEdits
+                        guard !fileEdits.isEmpty else {
+                            continue
+                        }
+                        
+                        for fileEdit in fileEdits {
+                            guard !redoedURL.contains(fileEdit.fileURL) else {
+                                continue
+                            }
+                            redoedURL.insert(fileEdit.fileURL)
+                            
+                            do {
+                                switch fileEdit.toolName {
+                                case .createFile, .insertEditIntoFile:
+                                    try fileEdit.modifiedContent.write(to: fileEdit.fileURL, atomically: true, encoding: .utf8)
+                                default:
+                                    break
+                                }
+                            } catch {
+                                Logger.client.error(">>> failed to undo fileEdit: \(error)")
+                            }
+                        }
+                    }
+                    
+                    // Recover fileEdits working set
+                    if let lastMessage {
+                        await send(.reloadWorkingset(lastMessage))
+                    }
+                }
+                
+            case .discardCheckPoint:                
+                let messagesAfterCheckpoint = state.messagesAfterCheckpoint
+                state.pendingCheckpointMessageId = nil
+                state.pendingCheckpointContext = nil
+                return .run { _ in 
+                    if !messagesAfterCheckpoint.isEmpty {
+                        await service.deleteMessages(ids: messagesAfterCheckpoint.map { $0.id })
+                    }
+                }
+                
+            case let .reloadWorkingset(message):
+                return .run { _ in 
+                    service.resetFileEdits()
+                    for fileEdit in message.fileEdits {
+                        service.updateFileEdits(by: fileEdit)
+                    }
+                }
             }
         }
     }

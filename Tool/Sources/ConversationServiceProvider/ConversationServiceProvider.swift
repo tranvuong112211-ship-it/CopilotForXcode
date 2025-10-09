@@ -6,6 +6,7 @@ import LanguageServerProtocol
 public protocol ConversationServiceType {
     func createConversation(_ request: ConversationRequest, workspace: WorkspaceInfo) async throws
     func createTurn(with conversationId: String, request: ConversationRequest, workspace: WorkspaceInfo) async throws
+    func deleteTurn(with conversationId: String, turnId: String, workspace: WorkspaceInfo) async throws
     func cancelProgress(_ workDoneToken: String, workspace: WorkspaceInfo) async throws
     func rateConversation(turnId: String, rating: ConversationRating, workspace: WorkspaceInfo) async throws
     func copyCode(request: CopyCodeRequest, workspace: WorkspaceInfo) async throws
@@ -14,12 +15,16 @@ public protocol ConversationServiceType {
     func notifyDidChangeWatchedFiles(_ event: DidChangeWatchedFilesEvent, workspace: WorkspaceInfo) async throws
     func agents(workspace: WorkspaceInfo) async throws -> [ChatAgent]?
     func notifyChangeTextDocument(fileURL: URL, content: String, version: Int, workspace: WorkspaceInfo) async throws
-    func reviewChanges(workspace: WorkspaceInfo, params: ReviewChangesParams) async throws -> CodeReviewResult?
+    func reviewChanges(
+        workspace: WorkspaceInfo,
+        changes: [ReviewChangesParams.Change]
+    ) async throws -> CodeReviewResult?
 }
 
 public protocol ConversationServiceProvider {
     func createConversation(_ request: ConversationRequest, workspaceURL: URL?) async throws
     func createTurn(with conversationId: String, request: ConversationRequest, workspaceURL: URL?) async throws
+    func deleteTurn(with conversationId: String, turnId: String, workspaceURL: URL?) async throws
     func stopReceivingMessage(_ workDoneToken: String, workspaceURL: URL?) async throws
     func rateConversation(turnId: String, rating: ConversationRating, workspaceURL: URL?) async throws
     func copyCode(_ request: CopyCodeRequest, workspaceURL: URL?) async throws
@@ -28,7 +33,7 @@ public protocol ConversationServiceProvider {
     func notifyDidChangeWatchedFiles(_ event: DidChangeWatchedFilesEvent, workspace: WorkspaceInfo) async throws
     func agents() async throws -> [ChatAgent]?
     func notifyChangeTextDocument(fileURL: URL, content: String, version: Int, workspaceURL: URL?) async throws
-    func reviewChanges(_ params: ReviewChangesParams) async throws -> CodeReviewResult?
+    func reviewChanges(_ changes: [ReviewChangesParams.Change]) async throws -> CodeReviewResult?
 }
 
 public struct ConversationFileReference: Hashable, Codable, Equatable {

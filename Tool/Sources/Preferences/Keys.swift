@@ -320,6 +320,10 @@ public extension UserDefaultPreferenceKeys {
     var enableFixError: PreferenceKey<Bool> {
         .init(defaultValue: true, key: "EnableFixError")
     }
+    
+    var suppressRestoreCheckpointConfirmation: PreferenceKey<Bool> {
+        .init(defaultValue: false, key: "SuppressRestoreCheckpointConfirmation")
+    }
 }
 
 // MARK: - Theme

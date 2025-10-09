@@ -78,6 +78,7 @@ public protocol GitHubCopilotConversationServiceType {
                     workspaceFolder: String,
                     workspaceFolders: [WorkspaceFolder]?,
                     agentMode: Bool) async throws
+    func deleteTurn(conversationId: String, turnId: String) async throws
     func rateConversation(turnId: String, rating: ConversationRating) async throws
     func copyCode(turnId: String, codeBlockIndex: Int, copyType: CopyKind, copiedCharacters: Int, totalCharacters: Int, copiedText: String) async throws
     func cancelProgress(token: String) async
@@ -687,6 +688,16 @@ public final class GitHubCopilotService:
                 GitHubCopilotRequest.CreateTurn(params: params))
         } catch {
             print("Failed to create turn. Error: \(error)")
+            throw error
+        }
+    }
+    
+    @GitHubCopilotSuggestionActor
+    public func deleteTurn(conversationId: String, turnId: String) async throws {
+        do {
+            let params = TurnDeleteParams(conversationId: conversationId, turnId: turnId, source: .panel)
+            _ = try await sendRequest(GitHubCopilotRequest.DeleteTurn(params: params))
+        } catch {
             throw error
         }
     }

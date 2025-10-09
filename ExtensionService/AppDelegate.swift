@@ -300,26 +300,20 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             // If the quota is nil, keep the original auth status item
             // Else only log the CLS error other than quota limit reached error
             if CLSMessageSummary.summary == CLSMessageType.other.summary || status.quotaInfo == nil {
-                self.authStatusItem.isHidden = false
-                self.authStatusItem.title = CLSMessageSummary.summary
-                
-                let submenu = NSMenu()
-                let attributedCLSErrorItem = NSMenuItem()
-                attributedCLSErrorItem.view = ErrorMessageView(
-                    errorMessage: CLSMessageSummary.detail
+                configureCLSAuthStatusItem(
+                    summary: CLSMessageSummary,
+                    actionTitle: "View Details on GitHub",
+                    action: #selector(openGitHubDetailsLink)
                 )
-                submenu.addItem(attributedCLSErrorItem)
-                submenu.addItem(.separator())
-                submenu.addItem(
-                    NSMenuItem(
-                        title: "View Details on GitHub",
-                        action: #selector(openGitHubDetailsLink),
-                        keyEquivalent: ""
-                    )
+            } else if CLSMessageSummary.summary == CLSMessageType.byokLimitedReached.summary {
+                configureCLSAuthStatusItem(
+                    summary: CLSMessageSummary,
+                    actionTitle: "Dismiss",
+                    action: #selector(dismissBYOKMessage)
                 )
-                
-                self.authStatusItem.submenu = submenu
-                self.authStatusItem.isEnabled = true
+            } else {
+                // Explicitly hide to avoid leaving stale content if another CLS state was previously shown.
+                self.authStatusItem.isHidden = true
             }
         } else {
             self.authStatusItem.isHidden = true
@@ -353,6 +347,32 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         self.toggleCompletions.isHidden = false
         self.toggleIgnoreLanguage.isHidden = false
         self.signOutItem.isHidden = false
+    }
+
+    func configureCLSAuthStatusItem(
+        summary: CLSMessage,
+        actionTitle: String,
+        action: Selector
+    ) {
+        self.authStatusItem.isHidden = false
+        self.authStatusItem.title = summary.summary
+        let submenu = NSMenu()
+        
+        let attributedCLSErrorItem = NSMenuItem()
+        attributedCLSErrorItem.view = ErrorMessageView(
+            errorMessage: summary.detail
+        )
+        submenu.addItem(attributedCLSErrorItem)
+        submenu.addItem(.separator())
+        submenu.addItem(
+            NSMenuItem(
+                title: actionTitle,
+                action: action,
+                keyEquivalent: ""
+            )
+        )
+        self.authStatusItem.submenu = submenu
+        self.authStatusItem.isEnabled = true
     }
 
     private func configureNotAuthorized(status: StatusResponse) {
@@ -477,6 +497,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             }
         }
     }
+    
+    @objc func dismissBYOKMessage() {
+        Task {
+            await Status.shared.updateCLSStatus(.normal, busy: false, message: "")
+        }
+    }
 }
 
 extension NSRunningApplication {
@@ -491,6 +517,7 @@ extension NSRunningApplication {
 enum CLSMessageType {
     case chatLimitReached
     case completionLimitReached
+    case byokLimitedReached
     case other
     
     var summary: String {
@@ -499,6 +526,8 @@ enum CLSMessageType {
             return "Monthly Chat Limit Reached"
         case .completionLimitReached:
             return "Monthly Completion Limit Reached"
+        case .byokLimitedReached:
+            return "BYOK Limit Reached"
         case .other:
             return "CLS Error"
         }
@@ -526,6 +555,8 @@ func getCLSMessageSummary(_ message: String) -> CLSMessage {
         messageType = .chatLimitReached
     } else if message.contains("Completions limit reached") {
         messageType = .completionLimitReached
+    } else if message.contains("BYOK") {
+        messageType = .byokLimitedReached
     } else {
         messageType = .other
     }

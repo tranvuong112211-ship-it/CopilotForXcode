@@ -352,6 +352,18 @@ enum GitHubCopilotRequest {
             return .custom("conversation/turn", dict, ClientRequest.NullHandler)
         }
     }
+    
+    struct DeleteTurn: GitHubCopilotRequestType {
+        struct Response: Codable {}
+        
+        var params: TurnDeleteParams
+        
+        var request: ClientRequest {
+            let data = (try? JSONEncoder().encode(params)) ?? Data()
+            let dict = (try? JSONDecoder().decode(JSONValue.self, from: data)) ?? .hash([:])
+            return .custom("conversation/turnDelete", dict, ClientRequest.NullHandler)
+        }
+    }
 
     // MARK: Conversation rating
 

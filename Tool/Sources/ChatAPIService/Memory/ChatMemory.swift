@@ -26,6 +26,15 @@ public extension ChatMemory {
             $0.removeAll { $0.id == id }
         }
     }
+    
+    /// Remove multiple messages from the history by their IDs.
+    func removeMessages(_ ids: [String]) async {
+        await mutateHistory { history in
+            history.removeAll { message in
+                ids.contains(message.id)
+            }
+        }
+    }
 
     /// Clear the history.
     func clearHistory() async {
@@ -80,6 +89,9 @@ extension ChatMessage {
         }
         
         self.codeReviewRound = message.codeReviewRound
+        
+        // merge file edits
+        self.fileEdits = mergeFileEdits(oldEdits: self.fileEdits, newEdits: message.fileEdits)
     }
     
     private func mergeEditAgentRounds(oldRounds: [AgentRound], newRounds: [AgentRound]) -> [AgentRound] {
@@ -115,5 +127,22 @@ extension ChatMessage {
         }
         
         return mergedAgentRounds
+    }
+    
+    private func mergeFileEdits(oldEdits: [FileEdit], newEdits: [FileEdit]) -> [FileEdit] {
+        var edits = oldEdits
+        
+        for newEdit in newEdits {
+            if let index = edits.firstIndex(
+                where: { $0.fileURL == newEdit.fileURL && $0.toolName == newEdit.toolName }
+            ) {
+                edits[index].modifiedContent = newEdit.modifiedContent
+                edits[index].status = newEdit.status
+            } else {
+                edits.append(newEdit)
+            }
+        }
+        
+        return edits
     }
 }

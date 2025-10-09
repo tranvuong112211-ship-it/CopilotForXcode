@@ -6,7 +6,7 @@ import ConversationServiceProvider
 import JSONRPC
 import Logger
 
-enum ConversationSource: String, Codable {
+public enum ConversationSource: String, Codable {
     case panel, inline
 }
 
@@ -204,6 +204,12 @@ struct TurnCreateParams: Codable {
     var workspaceFolders: [WorkspaceFolder]?
     var chatMode: String?
     var needToolCallConfirmation: Bool?
+}
+
+struct TurnDeleteParams: Codable {
+    var conversationId: String
+    var turnId: String
+    var source: ConversationSource?
 }
 
 // MARK: Copy

@@ -6,6 +6,7 @@ import Foundation
 import JSONRPC
 import Logger
 import XcodeInspector
+import ChatAPIService
 
 public class InsertEditIntoFileTool: ICopilotTool {
     public static let name = ToolName.insertEditIntoFile
@@ -13,7 +14,6 @@ public class InsertEditIntoFileTool: ICopilotTool {
     public func invokeTool(
         _ request: InvokeClientToolRequest,
         completion: @escaping (AnyJSONRPCResponse) -> Void,
-        chatHistoryUpdater: ChatHistoryUpdater?,
         contextProvider: (any ToolContextProvider)?
     ) -> Bool {
         guard let params = request.params,
@@ -47,9 +47,8 @@ public class InsertEditIntoFileTool: ICopilotTool {
                     return
                 }
                 
-                contextProvider.updateFileEdits(
-                    by: .init(fileURL: fileURL, originalContent: originalContent, modifiedContent: code, toolName: InsertEditIntoFileTool.name)
-                )
+                let fileEdit: FileEdit = .init(fileURL: fileURL, originalContent: originalContent, modifiedContent: code, toolName: InsertEditIntoFileTool.name)
+                contextProvider.updateFileEdits(by: fileEdit)
                 
                 let editAgentRounds: [AgentRound] = [
                     .init(
@@ -66,9 +65,8 @@ public class InsertEditIntoFileTool: ICopilotTool {
                     )
                 ]
                 
-                if let chatHistoryUpdater {
-                    chatHistoryUpdater(params.turnId, editAgentRounds)
-                }
+                contextProvider
+                    .updateChatHistory(params.turnId, editAgentRounds: editAgentRounds, fileEdits: [fileEdit])
                 
                 self.completeResponse(request, response: newContent, completion: completion)
             }

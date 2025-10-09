@@ -1,5 +1,5 @@
 
-public enum ToolName: String {
+public enum ToolName: String, Codable {
     case runInTerminal = "run_in_terminal"
     case getTerminalOutput = "get_terminal_output"
     case getErrors = "get_errors"

@@ -3,6 +3,37 @@ import Foundation
 import ConversationServiceProvider
 import GitHubCopilotService
 
+public struct FileEdit: Equatable, Codable {
+    
+    public enum Status: String, Codable {
+        case none = "none"
+        case kept = "kept"
+        case undone = "undone"
+    }
+    
+    public let fileURL: URL
+    public let originalContent: String
+    public var modifiedContent: String
+    public var status: Status
+    
+    /// Different toolName, the different undo logic. Like `insert_edit_into_file` and `create_file`
+    public var toolName: ToolName
+    
+    public init(
+        fileURL: URL,
+        originalContent: String,
+        modifiedContent: String,
+        status: Status = .none,
+        toolName: ToolName
+    ) {
+        self.fileURL = fileURL
+        self.originalContent = originalContent
+        self.modifiedContent = modifiedContent
+        self.status = status
+        self.toolName = toolName
+    }
+}
+
 // move here avoid circular reference
 public struct ConversationReference: Codable, Equatable, Hashable {
     public enum Kind: Codable, Equatable, Hashable {
@@ -121,6 +152,11 @@ public struct ChatMessage: Equatable, Codable {
     
     public var codeReviewRound: CodeReviewRound?
     
+    /// File edits performed during the current conversation turn.
+    /// Used as a checkpoint to track file modifications made by tools.
+    /// Note: Status changes (kept/undone) are tracked separately and not updated here.
+    public var fileEdits: [FileEdit]
+    
     /// The timestamp of the message.
     public var createdAt: Date
     public var updatedAt: Date
@@ -141,6 +177,7 @@ public struct ChatMessage: Equatable, Codable {
         editAgentRounds: [AgentRound] = [],
         panelMessages: [CopilotShowMessageParams] = [],
         codeReviewRound: CodeReviewRound? = nil,
+        fileEdits: [FileEdit] = [],
         createdAt: Date? = nil,
         updatedAt: Date? = nil
     ) {
@@ -159,6 +196,7 @@ public struct ChatMessage: Equatable, Codable {
         self.editAgentRounds = editAgentRounds
         self.panelMessages = panelMessages
         self.codeReviewRound = codeReviewRound
+        self.fileEdits = fileEdits
 
         let now = Date.now
         self.createdAt = createdAt ?? now
@@ -191,7 +229,8 @@ public struct ChatMessage: Equatable, Codable {
         suggestedTitle: String? = nil,
         steps: [ConversationProgressStep] = [],
         editAgentRounds: [AgentRound] = [],
-        codeReviewRound: CodeReviewRound? = nil
+        codeReviewRound: CodeReviewRound? = nil,
+        fileEdits: [FileEdit] = []
     ) {
         self.init(
             id: id,
@@ -204,7 +243,8 @@ public struct ChatMessage: Equatable, Codable {
             suggestedTitle: suggestedTitle,
             steps: steps,
             editAgentRounds: editAgentRounds,
-            codeReviewRound: codeReviewRound
+            codeReviewRound: codeReviewRound,
+            fileEdits: fileEdits
         )
     }
     

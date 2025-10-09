@@ -352,10 +352,25 @@ struct ChatPanelMessages: View {
 
 struct ChatHistory: View {
     let chat: StoreOf<Chat>
+    
+    var filteredHistory: [DisplayedChatMessage] {
+        guard let pendingCheckpointMessageId = chat.pendingCheckpointMessageId else {
+            return chat.history
+        }
+        
+        if let checkPointMessageIndex = chat.history.firstIndex(where: { $0.id == pendingCheckpointMessageId }) {
+            return Array(chat.history.prefix(checkPointMessageIndex + 1))
+        }
+        
+        return chat.history
+    }
 
     var body: some View {
         WithPerceptionTracking {
-            ForEach(Array(chat.history.enumerated()), id: \.element.id) { index, message in
+            let currentFilteredHistory = filteredHistory
+            let pendingCheckpointMessageId = chat.pendingCheckpointMessageId
+            
+            ForEach(Array(currentFilteredHistory.enumerated()), id: \.element.id) { index, message in
                 VStack(spacing: 0) {
                     WithPerceptionTracking {
                         ChatHistoryItem(chat: chat, message: message)
@@ -364,9 +379,22 @@ struct ChatHistory: View {
                             .padding(.bottom, 12)
                     }
                     
-                    // add divider between messages
-                    if message.role != .ignored && index < chat.history.count - 1 {
-                        Divider()                    }
+                    if message.role != .ignored && index < currentFilteredHistory.count - 1 {
+                        if message.role == .user {
+                            // add divider between messages
+                            Divider()
+                        } else if message.role == .assistant {
+                            // check point
+                            CheckPoint(chat: chat, messageId: message.id)
+                                .padding(.vertical, 8)
+                        }
+                    }
+                    
+                    // Show up check point for redo
+                    if message.id == pendingCheckpointMessageId {
+                        CheckPoint(chat: chat, messageId: message.id)
+                            .padding(.vertical, 8)
+                    }
                 }
             }
         }

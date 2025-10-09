@@ -8,7 +8,6 @@ public class GetErrorsTool: ICopilotTool {
     public func invokeTool(
         _ request: InvokeClientToolRequest,
         completion: @escaping (AnyJSONRPCResponse) -> Void,
-        chatHistoryUpdater: ChatHistoryUpdater?,
         contextProvider: ToolContextProvider?
     ) -> Bool {
         guard let params = request.params,
