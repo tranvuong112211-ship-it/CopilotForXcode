@@ -12,13 +12,12 @@ struct ProgressAgentRound: View {
     
     var body: some View {
         WithPerceptionTracking {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 8) {
                 ForEach(rounds, id: \.roundId) { round in
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: 8) {
                         ThemedMarkdownText(text: round.reply, chat: chat)
                         if let toolCalls = round.toolCalls, !toolCalls.isEmpty {
                             ProgressToolCalls(tools: toolCalls, chat: chat)
-                            .padding(.vertical, 8)
                         }
                     }
                 }
@@ -40,6 +39,7 @@ struct ProgressToolCalls: View {
                         RunInTerminalToolView(tool: tool, chat: chat)
                     } else if tool.invokeParams != nil && tool.status == .waitForConfirmation {
                         ToolConfirmationView(tool: tool, chat: chat)
+                            .scaledPadding(8)
                     } else {
                         ToolStatusItemView(tool: tool)
                     }
@@ -76,9 +76,8 @@ struct ToolConfirmationView: View {
                     .scaledFont(.body)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, 4)
+                .scaledPadding(.top, 4)
             }
-            .padding(8)
             .cornerRadius(8)
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
@@ -106,8 +105,8 @@ struct GenericToolTitleView: View {
                 .textSelection(.enabled)
                 .scaledFont(size: chatFontSize, weight: fontWeight)
                 .foregroundStyle(.primary)
-                .padding(.vertical, 2)
-                .padding(.horizontal, 4)
+                .scaledPadding(.vertical, 2)
+                .scaledPadding(.horizontal, 4)
                 .background(Color("ToolTitleHighlightBgColor"))
                 .cornerRadius(4)
                 .overlay(
@@ -135,22 +134,20 @@ struct ToolStatusItemView: View {
                     .scaledScaleEffect(0.7)
             case .completed:
                 Image(systemName: "checkmark")
-                    .foregroundColor(.green.opacity(0.5))
-                    .scaledFont(.body)
+                    .foregroundColor(Color.successLightGreen)
             case .error:
                 Image(systemName: "xmark.circle")
                     .foregroundColor(.red.opacity(0.5))
-                    .scaledFont(.body)
             case .cancelled:
                 Image(systemName: "slash.circle")
                     .foregroundColor(.gray.opacity(0.5))
-                    .scaledFont(.body)
             case .waitForConfirmation:
                 EmptyView()
             case .accepted:
                 EmptyView()
             }
         }
+        .scaledFont(size: chatFontSize - 1, weight: .medium)
     }
     
     var progressTitleText: some View {

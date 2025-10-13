@@ -1,4 +1,5 @@
 import SwiftUI
+import SharedUIComponents
 
 public enum BannerStyle { 
     case warning
@@ -33,12 +34,11 @@ struct NotificationBanner<Content: View>: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .padding(.vertical, 10)
-        .padding(.horizontal, 12)
+        .scaledPadding(.vertical, 10)
+        .scaledPadding(.horizontal, 12)
         .overlay(
             RoundedRectangle(cornerRadius: 6)
                 .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
         )
-        .padding(.vertical, 4)
     }
 }

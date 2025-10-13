@@ -33,6 +33,8 @@ public struct DisplayedChatMessage: Equatable {
     public var panelMessages: [CopilotShowMessageParams] = []
     public var codeReviewRound: CodeReviewRound? = nil
     public var fileEdits: [FileEdit] = []
+    public var turnStatus: ChatMessage.TurnStatus? = nil
+    public let requestType: RequestType
 
     public init(
         id: String,
@@ -47,7 +49,9 @@ public struct DisplayedChatMessage: Equatable {
         editAgentRounds: [AgentRound] = [],
         panelMessages: [CopilotShowMessageParams] = [],
         codeReviewRound: CodeReviewRound? = nil,
-        fileEdits: [FileEdit] = []
+        fileEdits: [FileEdit] = [],
+        turnStatus: ChatMessage.TurnStatus? = nil,
+        requestType: RequestType
     ) {
         self.id = id
         self.role = role
@@ -62,6 +66,8 @@ public struct DisplayedChatMessage: Equatable {
         self.panelMessages = panelMessages
         self.codeReviewRound = codeReviewRound
         self.fileEdits = fileEdits
+        self.turnStatus = turnStatus
+        self.requestType = requestType
     }
 }
 
@@ -78,6 +84,10 @@ struct ChatContext: Equatable {
         self.typedMessage = typedMessage
         self.attachedReferences = attachedReferences
         self.attachedImages = attachedImages
+    }
+    
+    static func empty() -> ChatContext {
+        .init(typedMessage: "", attachedReferences: [], attachedImages: [])
     }
     
     static func from(_ message: DisplayedChatMessage, projectURL: URL) -> ChatContext {
@@ -150,39 +160,337 @@ struct ChatContextProvider: Equatable {
 @Reducer
 struct Chat {
     public typealias MessageID = String
+    public enum EditorMode: Hashable {
+        case input // Default input mode
+        case editUserMessage(MessageID)
+        
+        var isDefault: Bool { self == .input }
+        
+        var isEditingUserMessage: Bool {
+            switch self {
+            case .input: false
+            case .editUserMessage: true
+            }
+        }
+        
+        var editingUserMessageId: String? {
+            switch self {
+            case .input: nil
+            case .editUserMessage(let messageID): messageID
+            }
+        }
+    }
+
+    @ObservableState
+    struct EditorState: Equatable {
+        enum Field: String, Hashable {
+            case textField
+            case fileSearchBar
+        }
+        
+        var codeReviewState = ConversationCodeReviewFeature.State()
+
+        var mode: EditorMode
+        var contexts: [EditorMode: ChatContext]
+        var contextProvider: ChatContextProvider
+        var focusedField: Field?
+        var currentEditor: ConversationFileReference?
+
+        init(
+            mode: EditorMode = .input,
+            contexts: [EditorMode: ChatContext] = [.input: .empty()],
+            contextProvider: ChatContextProvider = .init(),
+            focusedField: Field? = nil,
+            currentEditor: ConversationFileReference? = nil
+        ) {
+            self.mode = mode
+            self.contexts = contexts
+            self.contextProvider = contextProvider
+            self.focusedField = focusedField
+            self.currentEditor = currentEditor
+        }
+
+        func context(for mode: EditorMode) -> ChatContext {
+            contexts[mode] ?? .empty()
+        }
+
+        mutating func setContext(_ context: ChatContext, for mode: EditorMode) {
+            contexts[mode] = context
+        }
+
+        mutating func updateCurrentContext(_ update: (inout ChatContext) -> Void) {
+            var context = self.context(for: mode)
+            update(&context)
+            setContext(context, for: mode)
+        }
+
+        mutating func keepOnlyInputContext() {
+            let inputContext = context(for: .input)
+            contexts = [.input: inputContext]
+        }
+
+        mutating func clearAttachedImages() {
+            updateCurrentContext { $0.attachedImages.removeAll() }
+        }
+
+        mutating func addReference(_ reference: ConversationAttachedReference) {
+            updateCurrentContext { context in
+                guard !context.attachedReferences.contains(reference) else { return }
+                context.attachedReferences.append(reference)
+            }
+        }
+
+        mutating func removeReference(_ reference: ConversationAttachedReference) {
+            updateCurrentContext { context in
+                guard let index = context.attachedReferences.firstIndex(of: reference) else { return }
+                context.attachedReferences.remove(at: index)
+            }
+        }
+
+        mutating func addImage(_ image: ImageReference) {
+            updateCurrentContext { context in
+                guard !context.attachedImages.contains(image) else { return }
+                context.attachedImages.append(image)
+            }
+        }
+
+        mutating func removeImage(_ image: ImageReference) {
+            updateCurrentContext { context in
+                guard let index = context.attachedImages.firstIndex(of: image) else { return }
+                context.attachedImages.remove(at: index)
+            }
+        }
+
+        mutating func pushContext(_ context: ChatContext) {
+            contextProvider.pushContext(context)
+        }
+
+        mutating func resetContextProvider() {
+            contextProvider.reset()
+        }
+
+        mutating func popNextContext() -> ChatContext? {
+            contextProvider.getNextContext()
+        }
+
+        func previousContext(from history: [DisplayedChatMessage], projectURL: URL) -> ChatContext? {
+            contextProvider.getPreviousContext(from: history, projectURL: projectURL)
+        }
+    }
+
+    @ObservableState
+    struct ConversationState: Equatable {
+        var history: [DisplayedChatMessage]
+        var isReceivingMessage: Bool
+        var requestType: RequestType?
+
+        init(
+            history: [DisplayedChatMessage] = [],
+            isReceivingMessage: Bool = false,
+            requestType: RequestType? = nil
+        ) {
+            self.history = history
+            self.isReceivingMessage = isReceivingMessage
+            self.requestType = requestType
+        }
+
+        func subsequentMessages(after messageId: MessageID) -> [DisplayedChatMessage] {
+            guard let index = history.firstIndex(where: { $0.id == messageId }) else {
+                return []
+            }
+            return Array(history[(index + 1)...])
+        }
+
+        func editUserMessageEffectedMessages(for mode: EditorMode) -> [DisplayedChatMessage] {
+            guard case .editUserMessage(let messageId) = mode else {
+                return []
+            }
+            return subsequentMessages(after: messageId)
+        }
+    }
+
+    struct AgentEditingState: Equatable {
+        var fileEditMap: OrderedDictionary<URL, FileEdit>
+        var diffViewerController: DiffViewWindowController?
+
+        init(
+            fileEditMap: OrderedDictionary<URL, FileEdit> = [:],
+            diffViewerController: DiffViewWindowController? = nil
+        ) {
+            self.fileEditMap = fileEditMap
+            self.diffViewerController = diffViewerController
+        }
+
+        static func == (lhs: AgentEditingState, rhs: AgentEditingState) -> Bool {
+            lhs.fileEditMap == rhs.fileEditMap && lhs.diffViewerController === rhs.diffViewerController
+        }
+    }
+
+    struct EnvironmentState: Equatable {
+        var isAgentMode: Bool
+        var workspaceURL: URL?
+
+        init(
+            isAgentMode: Bool = AppState.shared.isAgentModeEnabled(),
+            workspaceURL: URL? = nil
+        ) {
+            self.isAgentMode = isAgentMode
+            self.workspaceURL = workspaceURL
+        }
+    }
 
     @ObservableState
     struct State: Equatable {
+        typealias Field = EditorState.Field
+
         // Not use anymore. the title of history tab will get from chat tab info
         // Keep this var as `ChatTabItemView` reference this
-        var title: String = "New Chat"
-        var chatContext: ChatContext = .init(typedMessage: "", attachedReferences: [], attachedImages: [])
-        var contextProvider: ChatContextProvider = .init()
-        var history: [DisplayedChatMessage] = []
-        var isReceivingMessage = false
-        var requestType: ChatService.RequestType? = nil
-        var chatMenu = ChatMenu.State()
-        var focusedField: Field?
-        var currentEditor: ConversationFileReference? = nil
+        var title: String
+        var editor: EditorState
+        var conversation: ConversationState
+        var agentEditing: AgentEditingState
+        var environment: EnvironmentState
+        var chatMenu: ChatMenu.State
+        var codeReviewState: ConversationCodeReviewFeature.State
+
+        init(
+            title: String = "New Chat",
+            editor: EditorState = .init(),
+            conversation: ConversationState = .init(),
+            agentEditing: AgentEditingState = .init(),
+            environment: EnvironmentState = .init(),
+            chatMenu: ChatMenu.State = .init(),
+            codeReviewState: ConversationCodeReviewFeature.State = .init()
+        ) {
+            self.title = title
+            self.editor = editor
+            self.conversation = conversation
+            self.agentEditing = agentEditing
+            self.environment = environment
+            self.chatMenu = chatMenu
+            self.codeReviewState = codeReviewState
+        }
+
+        init(
+            title: String = "New Chat",
+            editorMode: EditorMode = .input,
+            editorModeContexts: [EditorMode: ChatContext] = [.input: .empty()],
+            focusedField: Field? = nil,
+            history: [DisplayedChatMessage] = [],
+            isReceivingMessage: Bool = false,
+            requestType: RequestType? = nil,
+            fileEditMap: OrderedDictionary<URL, FileEdit> = [:],
+            diffViewerController: DiffViewWindowController? = nil,
+            isAgentMode: Bool = AppState.shared.isAgentModeEnabled(),
+            workspaceURL: URL? = nil,
+            chatMenu: ChatMenu.State = .init(),
+            codeReviewState: ConversationCodeReviewFeature.State = .init()
+        ) {
+            self.init(
+                title: title,
+                editor: EditorState(
+                    mode: editorMode,
+                    contexts: editorModeContexts,
+                    focusedField: focusedField
+                ),
+                conversation: ConversationState(
+                    history: history,
+                    isReceivingMessage: isReceivingMessage,
+                    requestType: requestType
+                ),
+                agentEditing: AgentEditingState(
+                    fileEditMap: fileEditMap,
+                    diffViewerController: diffViewerController
+                ),
+                environment: EnvironmentState(
+                    isAgentMode: isAgentMode,
+                    workspaceURL: workspaceURL
+                ),
+                chatMenu: chatMenu,
+                codeReviewState: codeReviewState
+            )
+        }
+
+        var editorMode: EditorMode {
+            get { editor.mode }
+            set {
+                editor.mode = newValue
+                if editor.contexts[newValue] == nil {
+                    editor.contexts[newValue] = .empty()
+                }
+            }
+        }
+
+        var chatContext: ChatContext {
+            get { editor.context(for: editor.mode) }
+            set { editor.setContext(newValue, for: editor.mode) }
+        }
+
+        var history: [DisplayedChatMessage] {
+            get { conversation.history }
+            set { conversation.history = newValue }
+        }
+
+        var isReceivingMessage: Bool {
+            get { conversation.isReceivingMessage }
+            set { conversation.isReceivingMessage = newValue }
+        }
+
+        var requestType: RequestType? {
+            get { conversation.requestType }
+            set { conversation.requestType = newValue }
+        }
+
+        var focusedField: Field? {
+            get { editor.focusedField }
+            set { editor.focusedField = newValue }
+        }
+
+        var currentEditor: ConversationFileReference? {
+            get { editor.currentEditor }
+            set { editor.currentEditor = newValue }
+        }
+
         var attachedReferences: [ConversationAttachedReference] {
             chatContext.attachedReferences
         }
+
         var attachedImages: [ImageReference] {
             chatContext.attachedImages
         }
+
         var typedMessage: String {
             get { chatContext.typedMessage }
-            set { 
-                chatContext.typedMessage = newValue
-                // User typed in. Need to reset contextProvider
-                contextProvider.reset()
+            set {
+                editor.updateCurrentContext { $0.typedMessage = newValue }
+                editor.resetContextProvider()
             }
         }
-        /// Cache the original content
-        var fileEditMap: OrderedDictionary<URL, FileEdit> = [:]
-        var diffViewerController: DiffViewWindowController? = nil
-        var isAgentMode: Bool = AppState.shared.isAgentModeEnabled()
-        var workspaceURL: URL? = nil
+
+        var fileEditMap: OrderedDictionary<URL, FileEdit> {
+            get { agentEditing.fileEditMap }
+            set { agentEditing.fileEditMap = newValue }
+        }
+
+        var diffViewerController: DiffViewWindowController? {
+            get { agentEditing.diffViewerController }
+            set { agentEditing.diffViewerController = newValue }
+        }
+
+        var isAgentMode: Bool {
+            get { environment.isAgentMode }
+            set { environment.isAgentMode = newValue }
+        }
+
+        var workspaceURL: URL? {
+            get { environment.workspaceURL }
+            set { environment.workspaceURL = newValue }
+        }
+
+        /// Not including the one being edited
+        var editUserMessageEffectedMessages: [DisplayedChatMessage] {
+            conversation.editUserMessageEffectedMessages(for: editor.mode)
+        }
         
         // The following messages after check point message will hide on ChatPanel
         var pendingCheckpointMessageId: String? = nil
@@ -201,13 +509,6 @@ struct Chat {
             // The order matters for restoring / redoing file edits
             return Array(history[nextIndex...])
         }
-        
-        enum Field: String, Hashable {
-            case textField
-            case fileSearchBar
-        }
-        
-        var codeReviewState = ConversationCodeReviewFeature.State()
         
         func getMessages(after afterMessageId: String, through throughMessageId: String?) -> [DisplayedChatMessage] {
             guard let afterMessageIdIndex = history.firstIndex(where: { $0.id == afterMessageId }) else {
@@ -239,6 +540,8 @@ struct Chat {
         case refresh
         case sendButtonTapped(String)
         case returnButtonTapped
+        case updateTypedMessage(String)
+        case setEditorMode(EditorMode)
         case stopRespondingButtonTapped
         case clearButtonTap
         case deleteMessageButtonTapped(MessageID)
@@ -376,11 +679,24 @@ struct Chat {
                 let attachedImages: [ImageReference] = shouldAttachImages ? state.attachedImages : []
 
                 let references = state.attachedReferences
-                state.chatContext.attachedImages = []
+                state.editor.clearAttachedImages()
+                
+                let toDeleteMessageIds: [String] = {
+                    var messageIds: [String] = []
+                    if state.editorMode.isEditingUserMessage {
+                        messageIds.append(contentsOf: state.editUserMessageEffectedMessages.map { $0.id })
+                        if let editingUserMessageId = state.editorMode.editingUserMessageId {
+                            messageIds.append(editingUserMessageId)
+                        }
+                    }
+                    return messageIds
+                }()
                 
                 return .run { send in
                     await send(.resetContextProvider)
                     await send(.discardCheckPoint)
+                    await service.deleteMessages(ids: toDeleteMessageIds)
+                    await send(.setEditorMode(.input))
                     
                     try await service
                         .send(
@@ -445,6 +761,36 @@ struct Chat {
             case .returnButtonTapped:
                 state.typedMessage += "\n"
                 return .none
+                
+            case let .updateTypedMessage(message):
+                state.typedMessage = message
+                return .none
+                
+            case let .setEditorMode(mode):
+                
+                switch mode {
+                case .input:
+                    state.editorMode = mode
+                    // remove all edit contexts except input mode
+                    state.editor.keepOnlyInputContext()
+                case .editUserMessage(let messageID):
+                    guard let message = state.history.first(where: { $0.id == messageID }),
+                          message.role == .user,
+                          let projectURL = service.getProjectRootURL()
+                    else {
+                        return .none
+                    }
+                    
+                    let chatContext: ChatContext = .from(message, projectURL: projectURL)
+                    state.editor.setContext(chatContext, for: mode)
+                    state.editorMode = mode
+                    
+                    return .run { send in
+                        await send(.stopRespondingButtonTapped)
+                    }
+                }
+                
+                return .none
 
             case .stopRespondingButtonTapped:
                 return .merge(
@@ -486,9 +832,11 @@ struct Chat {
                                 "/bin/bash",
                                 arguments: [
                                     "-c",
-                                    "xed -l 0 \"\(reference.filePath)\"",
+                                    "xed -l 0 \"${TARGET_CHAT_FILE}\"",
                                 ],
-                                environment: [:]
+                                environment: [
+                                    "TARGET_CHAT_FILE": reference.filePath
+                                ]
                             )
                         } catch {
                             print(error)
@@ -595,7 +943,9 @@ struct Chat {
                         editAgentRounds: message.editAgentRounds,
                         panelMessages: message.panelMessages,
                         codeReviewRound: message.codeReviewRound,
-                        fileEdits: message.fileEdits
+                        fileEdits: message.fileEdits,
+                        turnStatus: message.turnStatus,
+                        requestType: message.requestType
                     ))
 
                     return all
@@ -674,27 +1024,21 @@ struct Chat {
                 state.currentEditor = fileReference
                 return .none
             case let .addReference(ref):
-                guard !state.chatContext.attachedReferences.contains(ref) else { 
-                    return .none
-                }
-                state.chatContext.attachedReferences.append(ref)
+                state.editor.addReference(ref)
                 return .none
                 
             case let .removeReference(ref):
-                guard let index = state.chatContext.attachedReferences.firstIndex(of: ref) else {
-                    return .none
-                }
-                state.chatContext.attachedReferences.remove(at: index)
+                state.editor.removeReference(ref)
                 return .none
                 
             // MARK: - Image Context
             case let .addSelectedImage(imageReference):
                 guard !state.attachedImages.contains(imageReference) else { return .none }
-                state.chatContext.attachedImages.append(imageReference)
+                state.editor.addImage(imageReference)
                 return .run { send in await send(.resetContextProvider) }
             case let .removeSelectedImage(imageReference):
-                guard let index = state.attachedImages.firstIndex(of: imageReference) else { return .none }
-                state.chatContext.attachedImages.remove(at: index)
+                guard let _ = state.attachedImages.firstIndex(of: imageReference) else { return .none }
+                state.editor.removeImage(imageReference)
                 return .run { send in await send(.resetContextProvider) }
                 
             // MARK: - Agent Edits
@@ -756,7 +1100,7 @@ struct Chat {
                 
             // MARK: Chat Context
             case .reloadNextContext:
-                guard let context = state.contextProvider.getNextContext() else {
+                guard let context = state.editor.popNextContext() else {
                     return .none
                 }
                 
@@ -768,7 +1112,7 @@ struct Chat {
                 
             case .reloadPreviousContext:
                 guard let projectURL = service.getProjectRootURL(),
-                      let context = state.contextProvider.getPreviousContext(
+                      let context = state.editor.previousContext(
                         from: state.history,
                         projectURL: projectURL) 
                 else {
@@ -777,14 +1121,14 @@ struct Chat {
                 
                 let currentContext = state.chatContext
                 state.chatContext = context
-                state.contextProvider.pushContext(currentContext)
+                state.editor.pushContext(currentContext)
                 
                 return .run { send in
                     await send(.focusOnTextField)
                 }
                 
             case .resetContextProvider:
-                state.contextProvider.reset()
+                state.editor.resetContextProvider()
                 return .none
 
             // MARK: - External action
@@ -873,10 +1217,13 @@ struct Chat {
                     state.chatContext = .from(userMessage, projectURL: projectURL)
                 }
                 
-                return .run { send in 
+                let isReceivingMessage = state.isReceivingMessage
+                return .run { send in
                     await send(.restoreFileEdits)
                     await send(.reloadWorkingset(message))
-                    await send(.stopRespondingButtonTapped)
+                    if isReceivingMessage {
+                        await send(.stopRespondingButtonTapped)
+                    }
                 }
                 
             case .restoreFileEdits:

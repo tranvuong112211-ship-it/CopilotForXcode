@@ -50,10 +50,6 @@ struct ToolCallRequest {
 
 public final class ChatService: ChatServiceType, ObservableObject {
     
-    public enum RequestType: String, Equatable {
-        case conversation, codeReview
-    }
-    
     public var memory: ContextAwareAutoManagedChatMemory
     @Published public internal(set) var chatHistory: [ChatMessage] = []
     @Published public internal(set) var isReceivingMessage = false
@@ -183,11 +179,24 @@ public final class ChatService: ChatServiceType, ObservableObject {
     func appendToolCallHistory(turnId: String, editAgentRounds: [AgentRound], fileEdits: [FileEdit] = []) {
         let chatTabId = self.chatTabInfo.id
         Task {
+            let turnStatus: ChatMessage.TurnStatus? = {
+                guard let round = editAgentRounds.first, let toolCall = round.toolCalls?.first else {
+                    return nil
+                }
+                
+                switch toolCall.status {
+                case .waitForConfirmation: return .waitForConfirmation
+                case .accepted, .running, .completed, .error: return .inProgress
+                case .cancelled: return .cancelled
+                }
+            }()
+            
             let message = ChatMessage(
                 assistantMessageWithId: turnId,
                 chatTabID: chatTabId,
                 editAgentRounds: editAgentRounds,
-                fileEdits: fileEdits
+                fileEdits: fileEdits,
+                turnStatus: turnStatus
             )
 
             await self.memory.appendMessage(message)
@@ -221,7 +230,7 @@ public final class ChatService: ChatServiceType, ObservableObject {
 
     public func updateToolCallStatus(toolCallId: String, status: AgentToolCall.ToolCallStatus, payload: Any? = nil) {
         if status == .cancelled {
-            resetOngoingRequest()
+            resetOngoingRequest(with: .cancelled)
             return
         }
 
@@ -282,7 +291,8 @@ public final class ChatService: ChatServiceType, ObservableObject {
                     content: "",
                     references: [],
                     steps: [],
-                    editAgentRounds: updatedAgentRounds
+                    editAgentRounds: updatedAgentRounds,
+                    turnStatus: .inProgress
                 )
 
                 await self.memory.appendMessage(message)
@@ -481,9 +491,10 @@ public final class ChatService: ChatServiceType, ObservableObject {
                 print("Failed to cancel ongoing request with WDT: \(activeRequestId)")
             }
         }
-        resetOngoingRequest()
+        resetOngoingRequest(with: .cancelled)
     }
 
+    // Not used
     public func clearHistory() async {
         let messageIds = await memory.history.map { $0.id }
         
@@ -669,7 +680,7 @@ public final class ChatService: ChatServiceType, ObservableObject {
             /// Display an initial assistant message immediately after the user sends a message.
             /// This improves perceived responsiveness, especially in Agent Mode where the first
             /// ProgressReport may take long time.
-            let message = ChatMessage(assistantMessageWithId: turnId, chatTabID: chatTabInfo.id)
+            let message = ChatMessage(assistantMessageWithId: turnId, chatTabID: chatTabInfo.id, turnStatus: .inProgress)
 
             // will persist in resetOngoingRequest()
             await memory.appendMessage(message)
@@ -720,7 +731,8 @@ public final class ChatService: ChatServiceType, ObservableObject {
                 content: messageContent,
                 references: messageReferences,
                 steps: messageSteps,
-                editAgentRounds: messageAgentRounds
+                editAgentRounds: messageAgentRounds,
+                turnStatus: .inProgress
             )
 
             // will persist in resetOngoingRequest()
@@ -762,7 +774,7 @@ public final class ChatService: ChatServiceType, ObservableObject {
                         guard let fallbackModel = CopilotModelManager.getFallbackLLM(
                             scope: lastUserRequest.agentMode ? .agentPanel : .chatPanel
                         ) else {
-                            resetOngoingRequest()
+                            resetOngoingRequest(with: .error)
                             return
                         }
                         do {
@@ -774,7 +786,7 @@ public final class ChatService: ChatServiceType, ObservableObject {
                             )
                         } catch {
                             Logger.gitHubCopilot.error(error)
-                            resetOngoingRequest()
+                            resetOngoingRequest(with: .error)
                         }
                         return
                     }
@@ -787,7 +799,7 @@ public final class ChatService: ChatServiceType, ObservableObject {
                         errorMessages: ["Oops, the model is not supported. Please enable it first in [GitHub Copilot settings](https://github.com/settings/copilot)."]
                     )
                     await memory.appendMessage(errorMessage)
-                    resetOngoingRequest()
+                    resetOngoingRequest(with: .error)
                     return
                 }
             } else {
@@ -799,7 +811,7 @@ public final class ChatService: ChatServiceType, ObservableObject {
                     )
                     // will persist in resetOngoingRequest()
                     await memory.appendMessage(errorMessage)
-                    resetOngoingRequest()
+                    resetOngoingRequest(with: .error)
                     return
                 }
             }
@@ -810,15 +822,16 @@ public final class ChatService: ChatServiceType, ObservableObject {
                 assistantMessageWithId: progress.turnId, 
                 chatTabID: chatTabInfo.id,
                 followUp: followUp,
-                suggestedTitle: progress.suggestedTitle
+                suggestedTitle: progress.suggestedTitle,
+                turnStatus: .success
             )
             // will persist in resetOngoingRequest()
             await memory.appendMessage(message)
-            resetOngoingRequest()
+            resetOngoingRequest(with: .success)
         }
     }
     
-    private func resetOngoingRequest() {
+    private func resetOngoingRequest(with turnStatus: ChatMessage.TurnStatus = .success) {
         activeRequestId = nil
         isReceivingMessage = false
         requestType = nil
@@ -874,6 +887,8 @@ public final class ChatService: ChatServiceType, ObservableObject {
                 {
                     history[lastIndex].codeReviewRound!.status = .cancelled
                 }
+                
+                history[lastIndex].turnStatus = turnStatus
             })
 
             // The message of progress report could change rapidly
@@ -913,7 +928,7 @@ public final class ChatService: ChatServiceType, ObservableObject {
                 try await conversationProvider?.createConversation(requestWithTurns, workspaceURL: getWorkspaceURL())
             }
         } catch {
-            resetOngoingRequest()
+            resetOngoingRequest(with: .error)
             throw error
         }
     }
@@ -1114,17 +1129,18 @@ extension ChatService {
         }
         isReceivingMessage = true
         requestType = .codeReview
+        let turnId = UUID().uuidString
         
         do {
             await CodeReviewService.shared.resetComments()
-            
-            let turnId = UUID().uuidString
             
             await addCodeReviewUserMessage(id: UUID().uuidString, turnId: turnId, group: group)
             
             let initialBotMessage = ChatMessage(
                 assistantMessageWithId: turnId, 
-                chatTabID: chatTabInfo.id
+                chatTabID: chatTabInfo.id,
+                turnStatus: .inProgress,
+                requestType: .codeReview
             )
             await memory.appendMessage(initialBotMessage)
             
@@ -1132,7 +1148,7 @@ extension ChatService {
             else {
                 let round = CodeReviewRound.fromError(turnId: turnId, error: "Invalid git repository.")
                 await appendCodeReviewRound(round)
-                resetOngoingRequest()
+                resetOngoingRequest(with: .error)
                 return
             }
             
@@ -1156,9 +1172,9 @@ extension ChatService {
                 status: .waitForConfirmation,
                 request: .from(prChanges)
             )
-            await appendCodeReviewRound(round)
+            await appendCodeReviewRound(round, turnStatus: .waitForConfirmation)
         } catch {
-            resetOngoingRequest()
+            resetOngoingRequest(with: .error)
             throw error
         }
     }
@@ -1173,9 +1189,15 @@ extension ChatService {
         }
     }
 
-    private func appendCodeReviewRound(_ round: CodeReviewRound) async {
+    private func appendCodeReviewRound(
+        _ round: CodeReviewRound,
+        turnStatus: ChatMessage.TurnStatus? = nil
+    ) async {
         let message = ChatMessage(
-            assistantMessageWithId: round.turnId, chatTabID: chatTabInfo.id, codeReviewRound: round
+            assistantMessageWithId: round.turnId,
+            chatTabID: chatTabInfo.id,
+            codeReviewRound: round,
+            turnStatus: turnStatus
         )
         
         await memory.appendMessage(message)
@@ -1211,7 +1233,7 @@ extension ChatService {
         round.status = .accepted
         request.updateSelectedChanges(by: selectedFileUris)
         round.request = request
-        await appendCodeReviewRound(round)
+        await appendCodeReviewRound(round, turnStatus: .inProgress)
         
         round.status = .running
         await appendCodeReviewRound(round)
@@ -1224,7 +1246,7 @@ extension ChatService {
         if let errorMessage = errorMessage {
             round = round.withError(errorMessage)
             await appendCodeReviewRound(round)
-            resetOngoingRequest()
+            resetOngoingRequest(with: .error)
             return
         } 
         
@@ -1248,14 +1270,19 @@ extension ChatService {
         round.status = .cancelled
         await appendCodeReviewRound(round)
         
-        resetOngoingRequest()
+        resetOngoingRequest(with: .cancelled)
     }
     
     private func addCodeReviewUserMessage(id: String, turnId: String, group: GitDiffGroup) async {
         let content = group == .index
             ? "Code review for staged changes."
             : "Code review for unstaged changes."
-        let chatMessage = ChatMessage(userMessageWithId: id, chatTabId: chatTabInfo.id, content: content)
+        let chatMessage = ChatMessage(
+            userMessageWithId: id,
+            chatTabId: chatTabInfo.id,
+            content: content,
+            requestType: .codeReview
+        )
         await memory.appendMessage(chatMessage)
         saveChatMessageToStorage(chatMessage)
     }

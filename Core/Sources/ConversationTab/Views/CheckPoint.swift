@@ -64,10 +64,7 @@ struct CheckPoint: View {
                         .scaledFont(size: chatFontSize)
                         .foregroundStyle(.secondary)
                         .scaledPadding(.horizontal, 2)
-                        .background(
-                            Color(nsColor: .windowBackgroundColor),
-                            in: Rectangle()
-                        )
+                        .background(Color.chatWindowBackgroundColor)
                 }
             } else if isHovering {
                 restoreButton

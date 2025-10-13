@@ -53,7 +53,7 @@ struct CodeReviewPanelView: View {
                     .padding(.horizontal, 20)
                     .frame(maxWidth: .infinity, maxHeight: Style.codeReviewPanelHeight, alignment: .top)
                     .fixedSize(horizontal: false, vertical: true)
-                    .xcodeStyleFrame(cornerRadius: 10)
+                    .xcodeStyleFrame()
                     .onAppear { viewStore.send(.appear) }
                     
                     Spacer()

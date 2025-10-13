@@ -55,7 +55,7 @@ struct ChatLoginView: View {
                             }
                         }
                     }
-                    .padding(.top, 16)
+                    .scaledPadding(.top, 16)
                     
                     Spacer()
                     Text("Copilot Free and Copilot Pro may show [public code](https://aka.ms/github-copilot-match-public-code) suggestions and collect telemetry. You can change these [GitHub settings](https://aka.ms/github-copilot-settings) at any time. By continuing, you agree to our [terms](https://github.com/customer-terms/github-copilot-product-specific-terms) and [privacy policy](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement).")
@@ -67,7 +67,7 @@ struct ChatLoginView: View {
                     maxHeight: .infinity
                 )
             }
-            .xcodeStyleFrame(cornerRadius: 10)
+            .xcodeStyleFrame()
             .ignoresSafeArea(edges: .top)
             .alert(
                 viewModel.signInResponse?.userCode ?? "",

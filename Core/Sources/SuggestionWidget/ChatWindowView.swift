@@ -59,24 +59,24 @@ struct ChatView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            Rectangle().fill(Material.bar).frame(height: 28)
+            Rectangle()
+                .fill(Color.chatWindowBackgroundColor)
+                .scaledFrame(height: 28)
 
-            Divider()
-
-            ZStack {
-                VStack(spacing: 0) {
-                    ChatBar(store: store, isChatHistoryVisible: $isChatHistoryVisible)
-                        .frame(height: 32)
-                        .background(.ultraThinMaterial)
-
-                    Divider()
-
-                    ChatTabContainer(store: store)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
+            VStack(spacing: 0) {
+                ChatBar(store: store, isChatHistoryVisible: $isChatHistoryVisible)
+                    .scaledFrame(height: 32)
+                    .scaledPadding(.leading, 16)
+                    .scaledPadding(.trailing, 8)
+                
+                Divider()
+                
+                ChatTabContainer(store: store)
+                    .scaledPadding(.horizontal, 16)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .xcodeStyleFrame(cornerRadius: 10)
+        .xcodeStyleFrame()
         .ignoresSafeArea(edges: .top)
     }
 }
@@ -89,21 +89,21 @@ struct ChatHistoryViewWrapper: View {
     var body: some View {
         WithPerceptionTracking {
             VStack(spacing: 0) {
-                Rectangle().fill(Material.bar).frame(height: 28)
-
-                Divider()
+                Rectangle()
+                    .fill(Color.chatWindowBackgroundColor)
+                    .scaledFrame(height: 28)
                 
                 ChatHistoryView(
                     store: store,
                     isChatHistoryVisible: $isChatHistoryVisible
                 )
-                .background(.ultraThinMaterial)
+                .background(Color.chatWindowBackgroundColor)
                 .frame(
                     maxWidth: .infinity,
                     maxHeight: .infinity
                 )
             }
-            .xcodeStyleFrame(cornerRadius: 10)
+            .xcodeStyleFrame()
             .ignoresSafeArea(edges: .top)
             .preferredColorScheme(store.colorScheme)
             .focusable()
@@ -133,7 +133,7 @@ struct ChatLoadingView: View {
             Spacer()
 
         }
-        .xcodeStyleFrame(cornerRadius: 10)
+        .xcodeStyleFrame()
         .ignoresSafeArea(edges: .top)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(.ultraThinMaterial)
@@ -252,7 +252,7 @@ struct ChatBar: View {
 
     var body: some View {
         WithPerceptionTracking {
-            HStack(spacing: 0) {
+            HStack(spacing: 8) {
                 if store.chatHistory.selectedWorkspaceName != nil {
                     ChatWindowHeader(store: store)
                 }
@@ -265,7 +265,6 @@ struct ChatBar: View {
                 
                 SettingsButton(store: store)
             }
-            .padding(.horizontal, 12)
         }
     }
 
@@ -326,9 +325,9 @@ struct ChatBar: View {
 
                     Text(store.chatHistory.selectedWorkspaceName!)
                         .scaledFont(size: 13, weight: .bold)
-                        .padding(.leading, 4)
+                        .scaledPadding(.leading, 4)
                         .truncationMode(.tail)
-                        .frame(maxWidth: 192, alignment: .leading)
+                        .scaledFrame(maxWidth: 192, alignment: .leading)
                         .help(store.chatHistory.selectedWorkspacePath!)
                 }
             }
@@ -347,7 +346,6 @@ struct ChatBar: View {
                         .scaledFont(.body)
                 }
                 .buttonStyle(HoverButtonStyle())
-                .padding(.horizontal, 4)
                 .help("New Chat")
                 .accessibilityLabel("New Chat")
             }
@@ -372,7 +370,6 @@ struct ChatBar: View {
                     }
                 }
                 .buttonStyle(HoverButtonStyle())
-                .padding(.horizontal, 4)
                 .help("Show Chats...")
                 .accessibilityLabel("Show Chats...")
             }
@@ -391,7 +388,6 @@ struct ChatBar: View {
                         .scaledFont(.body)
                 }
                 .buttonStyle(HoverButtonStyle())
-                .padding(.horizontal, 4)
                 .help("Open Settings")
                 .accessibilityLabel("Open Settings")
             }

@@ -19,19 +19,18 @@ struct WorkingSetView: View {
             VStack(spacing: 4) {
                 
                 WorkingSetHeader(chat: chat)
-                    .frame(height: 24)
-                    .padding(.leading, 12)
-                    .padding(.trailing, 5)
+                    .scaledFrame(height: 24)
+                    .scaledPadding(.leading, 7)
                 
                 VStack(spacing: 0) {
                     ForEach(chat.fileEditMap.elements, id: \.key.path) { element in
                         FileEditView(chat: chat, fileEdit: element.value)
                     }
                 }
-                .padding(.horizontal, 5)
             }
-            .padding(.top, 8)
-            .padding(.bottom, 10)
+            .scaledPadding(.horizontal, 5)
+            .scaledPadding(.top, 8)
+            .scaledPadding(.bottom, 10)
             .frame(maxWidth: .infinity)
             .background(
                 RoundedCorners(tl: r, tr: r, bl: 0, br: 0)
@@ -65,7 +64,7 @@ struct WorkingSetHeader: View {
             Text(text)
                 .scaledFont(.body)
                 .foregroundColor(textForegroundColor)
-                .padding(.horizontal, 6)
+                .scaledPadding(.horizontal, 6)
                 .padding(.vertical, 2)
                 .background(textBackgroundColor)
                 .cornerRadius(2)
@@ -73,7 +72,7 @@ struct WorkingSetHeader: View {
                     RoundedRectangle(cornerRadius: 2)
                         .stroke(Color.white.opacity(0.07), lineWidth: 1)
                 )
-                .frame(width: 60, height: 15, alignment: .center)
+                .scaledFrame(width: 60, height: 15, alignment: .center)
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -212,8 +211,8 @@ struct FileEditView: View {
         .onHover { hovering in
             isHovering = hovering
         }
-        .padding(.leading, 7)
-        .frame(height: 24)
+        .scaledPadding(.leading, 7)
+        .scaledFrame(height: 24)
         .hoverRadiusBackground(
             isHovered: isHovering,
             hoverColor: Color.blue,

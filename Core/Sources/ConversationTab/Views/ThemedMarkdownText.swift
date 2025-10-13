@@ -178,4 +178,3 @@ struct ThemedMarkdownText_Previews: PreviewProvider {
             context: .init(onInsert: {_ in  print("Inserted") }))
     }
 }
-

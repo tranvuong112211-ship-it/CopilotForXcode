@@ -14,7 +14,7 @@ public struct HoverButtonStyle: ButtonStyle {
 
     public func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .padding(padding)
+            .scaledPadding(padding)
             .background(
                 configuration.isPressed
                 ? Color.gray.opacity(0.2)

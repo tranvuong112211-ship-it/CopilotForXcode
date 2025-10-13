@@ -92,6 +92,9 @@ extension ChatMessage {
         
         // merge file edits
         self.fileEdits = mergeFileEdits(oldEdits: self.fileEdits, newEdits: message.fileEdits)
+        
+        // merge turn status
+        self.turnStatus = message.turnStatus ?? self.turnStatus
     }
     
     private func mergeEditAgentRounds(oldRounds: [AgentRound], newRounds: [AgentRound]) -> [AgentRound] {

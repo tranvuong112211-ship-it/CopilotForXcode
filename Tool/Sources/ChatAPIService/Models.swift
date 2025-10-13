@@ -102,6 +102,11 @@ public struct ConversationReference: Codable, Equatable, Hashable {
 }
 
 
+public enum RequestType: String, Equatable, Codable {
+    case conversation, codeReview
+}
+
+
 public struct ChatMessage: Equatable, Codable {
     public typealias ID = String
 
@@ -109,6 +114,10 @@ public struct ChatMessage: Equatable, Codable {
         case user
         case assistant
         case system
+    }
+    
+    public enum TurnStatus: String, Codable, Equatable {
+        case inProgress, success, cancelled, error, waitForConfirmation
     }
     
     /// The role of a message.
@@ -157,6 +166,10 @@ public struct ChatMessage: Equatable, Codable {
     /// Note: Status changes (kept/undone) are tracked separately and not updated here.
     public var fileEdits: [FileEdit]
     
+    public var turnStatus: TurnStatus?
+    
+    public let requestType: RequestType
+    
     /// The timestamp of the message.
     public var createdAt: Date
     public var updatedAt: Date
@@ -178,6 +191,8 @@ public struct ChatMessage: Equatable, Codable {
         panelMessages: [CopilotShowMessageParams] = [],
         codeReviewRound: CodeReviewRound? = nil,
         fileEdits: [FileEdit] = [],
+        turnStatus: TurnStatus? = nil,
+        requestType: RequestType = .conversation,
         createdAt: Date? = nil,
         updatedAt: Date? = nil
     ) {
@@ -197,6 +212,8 @@ public struct ChatMessage: Equatable, Codable {
         self.panelMessages = panelMessages
         self.codeReviewRound = codeReviewRound
         self.fileEdits = fileEdits
+        self.turnStatus = turnStatus
+        self.requestType = requestType
 
         let now = Date.now
         self.createdAt = createdAt ?? now
@@ -208,7 +225,8 @@ public struct ChatMessage: Equatable, Codable {
         chatTabId: String,
         content: String,
         contentImageReferences: [ImageReference] = [],
-        references: [ConversationReference] = []
+        references: [ConversationReference] = [],
+        requestType: RequestType = .conversation
     ) {
         self.init(
             id: id,
@@ -216,7 +234,8 @@ public struct ChatMessage: Equatable, Codable {
             role: .user,
             content: content,
             contentImageReferences: contentImageReferences,
-            references: references
+            references: references,
+            requestType: requestType
         )
     }
     
@@ -230,7 +249,9 @@ public struct ChatMessage: Equatable, Codable {
         steps: [ConversationProgressStep] = [],
         editAgentRounds: [AgentRound] = [],
         codeReviewRound: CodeReviewRound? = nil,
-        fileEdits: [FileEdit] = []
+        fileEdits: [FileEdit] = [],
+        turnStatus: TurnStatus? = nil,
+        requestType: RequestType = .conversation
     ) {
         self.init(
             id: id,
@@ -244,7 +265,9 @@ public struct ChatMessage: Equatable, Codable {
             steps: steps,
             editAgentRounds: editAgentRounds,
             codeReviewRound: codeReviewRound,
-            fileEdits: fileEdits
+            fileEdits: fileEdits,
+            turnStatus: turnStatus,
+            requestType: requestType
         )
     }
     

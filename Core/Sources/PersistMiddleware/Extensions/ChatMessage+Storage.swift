@@ -8,6 +8,7 @@ extension ChatMessage {
     
     struct TurnItemData: Codable {
         var content: String
+        var contentImageReferences: [ImageReference]
         var rating: ConversationRating
         var references: [ConversationReference]
         var followUp: ConversationFollowUp?
@@ -17,11 +18,14 @@ extension ChatMessage {
         var editAgentRounds: [AgentRound]
         var panelMessages: [CopilotShowMessageParams]
         var fileEdits: [FileEdit]
+        var turnStatus: ChatMessage.TurnStatus?
+        let requestType: RequestType
 
         // Custom decoder to provide default value for steps
         init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             content = try container.decode(String.self, forKey: .content)
+            contentImageReferences = try container.decodeIfPresent([ImageReference].self, forKey: .contentImageReferences) ?? []
             rating = try container.decode(ConversationRating.self, forKey: .rating)
             references = try container.decode([ConversationReference].self, forKey: .references)
             followUp = try container.decodeIfPresent(ConversationFollowUp.self, forKey: .followUp)
@@ -31,11 +35,14 @@ extension ChatMessage {
             editAgentRounds = try container.decodeIfPresent([AgentRound].self, forKey: .editAgentRounds) ?? []
             panelMessages = try container.decodeIfPresent([CopilotShowMessageParams].self, forKey: .panelMessages) ?? []
             fileEdits = try container.decodeIfPresent([FileEdit].self, forKey: .fileEdits) ?? []
+            turnStatus = try container.decodeIfPresent(ChatMessage.TurnStatus.self, forKey: .turnStatus)
+            requestType = try container.decodeIfPresent(RequestType.self, forKey: .requestType) ?? .conversation
         }
 
         // Default memberwise init for encoding
         init(
             content: String,
+            contentImageReferences: [ImageReference]? = nil,
             rating: ConversationRating,
             references: [ConversationReference],
             followUp: ConversationFollowUp?,
@@ -44,9 +51,12 @@ extension ChatMessage {
             steps: [ConversationProgressStep]?,
             editAgentRounds: [AgentRound]? = nil,
             panelMessages: [CopilotShowMessageParams]? = nil,
-            fileEdits: [FileEdit]? = nil
+            fileEdits: [FileEdit]? = nil,
+            turnStatus: ChatMessage.TurnStatus? = nil,
+            requestType: RequestType = .conversation
         ) {
             self.content = content
+            self.contentImageReferences = contentImageReferences ?? []
             self.rating = rating
             self.references = references
             self.followUp = followUp
@@ -56,12 +66,15 @@ extension ChatMessage {
             self.editAgentRounds = editAgentRounds ?? []
             self.panelMessages = panelMessages ?? []
             self.fileEdits = fileEdits ?? []
+            self.turnStatus = turnStatus
+            self.requestType = requestType
         }
     }
     
     func toTurnItem() -> TurnItem {
         let turnItemData = TurnItemData(
             content: self.content,
+            contentImageReferences: self.contentImageReferences,
             rating: self.rating,
             references: self.references,
             followUp: self.followUp,
@@ -70,7 +83,9 @@ extension ChatMessage {
             steps: self.steps,
             editAgentRounds: self.editAgentRounds,
             panelMessages: self.panelMessages,
-            fileEdits: self.fileEdits
+            fileEdits: self.fileEdits,
+            turnStatus: self.turnStatus,
+            requestType: self.requestType
         )
         
         // TODO: handle exception
@@ -95,6 +110,7 @@ extension ChatMessage {
                     clsTurnID: turnItem.CLSTurnID,
                     role: ChatMessage.Role(rawValue: turnItem.role)!,
                     content: turnItemData.content,
+                    contentImageReferences: turnItemData.contentImageReferences,
                     references: turnItemData.references,
                     followUp: turnItemData.followUp,
                     suggestedTitle: turnItemData.suggestedTitle,
@@ -104,6 +120,8 @@ extension ChatMessage {
                     editAgentRounds: turnItemData.editAgentRounds,
                     panelMessages: turnItemData.panelMessages,
                     fileEdits: turnItemData.fileEdits,
+                    turnStatus: turnItemData.turnStatus,
+                    requestType: turnItemData.requestType,
                     createdAt: turnItem.createdAt,
                     updatedAt: turnItem.updatedAt
                 )

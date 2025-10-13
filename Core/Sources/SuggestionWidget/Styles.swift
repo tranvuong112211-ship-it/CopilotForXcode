@@ -58,7 +58,7 @@ struct XcodeLikeFrame<Content: View>: View {
         content.clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .background(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(Material.bar)
+                    .fill(Color.chatWindowBackgroundColor)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: max(0, cornerRadius), style: .continuous)
@@ -73,8 +73,9 @@ struct XcodeLikeFrame<Content: View>: View {
 }
 
 extension View {
-    func xcodeStyleFrame(cornerRadius: Double? = nil) -> some View {
-        XcodeLikeFrame(content: self, cornerRadius: cornerRadius ?? 10)
+    var xcodeStyleCornerRadius: Double { 16 }
+    func xcodeStyleFrame() -> some View {
+        XcodeLikeFrame(content: self, cornerRadius: xcodeStyleCornerRadius)
     }
 }
 

@@ -176,7 +176,6 @@ public struct FilePicker: View {
                 RoundedRectangle(cornerRadius: 8)
                     .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
             )
-            .padding(.horizontal, 12)
         }
     }
 
