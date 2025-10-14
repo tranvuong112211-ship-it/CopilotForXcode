@@ -784,9 +784,12 @@ struct Chat {
                     let chatContext: ChatContext = .from(message, projectURL: projectURL)
                     state.editor.setContext(chatContext, for: mode)
                     state.editorMode = mode
+                    let isReceivingMessage = service.isReceivingMessage
                     
                     return .run { send in
-                        await send(.stopRespondingButtonTapped)
+                        if isReceivingMessage {
+                            await send(.stopRespondingButtonTapped)
+                        }
                     }
                 }
                 

@@ -43,6 +43,7 @@ public struct ChatPanel: View {
                     if let _ = chat.history.last?.followUp {
                         ChatFollowUp(chat: chat)
                             .scaledPadding(.vertical, 8)
+                            .scaledPadding(.horizontal, 16)
                             .dimWithExitEditMode(chat)
                     }
                 }
@@ -50,11 +51,12 @@ public struct ChatPanel: View {
                 if chat.fileEditMap.count > 0 {
                     WorkingSetView(chat: chat)
                         .dimWithExitEditMode(chat)
+                        .scaledPadding(.horizontal, 16)
                 }
                 
                 ChatPanelInputArea(chat: chat, r: r, editorMode: .input)
-                    .chatPanelInputAreaPadding(.input)
                     .dimWithExitEditMode(chat)
+                    .scaledPadding(.horizontal, 16)
             }
             .scaledPadding(.vertical, 12)
             .background(Color.chatWindowBackgroundColor)
@@ -183,7 +185,7 @@ struct ChatPanelMessages: View {
                         }
                     }
                     .listStyle(.plain)
-                    .padding(.horizontal, -8)
+                    .scaledPadding(.leading, 8)
                     .listRowBackground(EmptyView())
                     .modify { view in
                         if #available(macOS 13.0, *) {
@@ -406,6 +408,7 @@ struct ChatHistory: View {
                                 // check point
                                 CheckPoint(chat: chat, messageId: message.id)
                                     .padding(.vertical, 8)
+                                    .padding(.trailing, 8)
                             }
                         }
                         
@@ -413,6 +416,7 @@ struct ChatHistory: View {
                         if message.id == pendingCheckpointMessageId {
                             CheckPoint(chat: chat, messageId: message.id)
                                 .padding(.vertical, 8)
+                                .padding(.trailing, 8)
                         }
                     }
                     .dimWithExitEditMode(
@@ -445,6 +449,7 @@ struct ChatHistoryItem: View {
                     requestType: message.requestType
                 )
                 .scaledPadding(.leading, chat.editorMode.isEditingUserMessage && chat.editorMode.editingUserMessageId == message.id ? 0 : 20)
+                .scaledPadding(.trailing, 8)
             case .assistant:
                 BotMessage(
                     message: message,

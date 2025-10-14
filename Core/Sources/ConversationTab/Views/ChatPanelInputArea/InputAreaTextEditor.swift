@@ -211,7 +211,7 @@ struct InputAreaTextEditor: View {
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 6)
-                    .stroke(Color(nsColor: .controlColor), lineWidth: 1)
+                    .stroke(.quaternary, lineWidth: 1)
             }
             .background {
                 if isEditorActive {
@@ -452,6 +452,14 @@ struct InputAreaTextEditor: View {
     
     @ViewBuilder
     func makeCurrentEditorView(_ ref: ConversationFileReference) -> some View {
+        let toggleTrailingPadding: CGFloat = {
+            if #available(macOS 26.0, *) {
+                return 8
+            } else {
+                return 4
+            }
+        }()
+        
         HStack(spacing: 0) {
             makeContextFileNameView(url: ref.url, isCurrentEditor: true, selection: ref.selection)
             
@@ -459,7 +467,7 @@ struct InputAreaTextEditor: View {
                 .toggleStyle(SwitchToggleStyle(tint: .blue))
                 .controlSize(.mini)
                 .frame(width: 34)
-                .padding(.trailing, 4)
+                .padding(.trailing, toggleTrailingPadding)
                 .onChange(of: isCurrentEditorContextEnabled) { newValue in
                     enableCurrentEditorContext = newValue
                 }

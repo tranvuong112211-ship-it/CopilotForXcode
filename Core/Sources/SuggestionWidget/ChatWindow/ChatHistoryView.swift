@@ -17,7 +17,7 @@ struct ChatHistoryView: View {
     var body: some View {
         WithPerceptionTracking {
 
-            VStack(alignment: .center, spacing: 8) {
+            VStack(alignment: .center, spacing: 0) {
                 Header(isChatHistoryVisible: $isChatHistoryVisible)
                     .scaledFrame(height: 32)
                     .scaledPadding(.leading, 12)
@@ -28,6 +28,7 @@ struct ChatHistoryView: View {
                 ChatHistorySearchBarView(searchText: $searchText)
                     .scaledPadding(.leading, 12)
                     .scaledPadding(.trailing, 8)
+                    .scaledPadding(.vertical, 8)
                 
                 ItemView(store: store, searchText: $searchText, isChatHistoryVisible: $isChatHistoryVisible)
                     .scaledPadding(.leading, 12)
@@ -222,6 +223,7 @@ struct ChatHistoryItemView: View {
                 .padding(.horizontal, 12)
             }
             .frame(maxHeight: .infinity)
+            .contentShape(Rectangle())
             .onHover(perform: {
                 isHovered = $0
             })

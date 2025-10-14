@@ -72,7 +72,6 @@ struct ChatView: View {
                 Divider()
                 
                 ChatTabContainer(store: store)
-                    .scaledPadding(.horizontal, 16)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }

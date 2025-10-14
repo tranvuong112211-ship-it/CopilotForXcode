@@ -302,8 +302,12 @@ struct ModelPicker: View {
             HStack(spacing: 0) {
                 // Custom segmented control with color change
                 ChatModePicker(chatMode: $chatMode, onScopeChange: switchModelsForScope)
-                    .onAppear() {
+                    .onAppear {
                         updateAgentPicker()
+                    }
+                    .onReceive(
+                        NotificationCenter.default.publisher(for: .gitHubCopilotChatModeDidChange)) { _ in
+                            updateAgentPicker()
                     }
                 
                 if chatMode == "Agent" {

@@ -112,7 +112,6 @@ private struct MessageInputArea: View {
             editorMode: editorMode
         )
         .frame(maxWidth: .infinity)
-        .chatPanelInputAreaPadding(editorMode)
     }
 }
 

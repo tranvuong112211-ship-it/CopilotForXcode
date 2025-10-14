@@ -39,7 +39,6 @@ struct ProgressToolCalls: View {
                         RunInTerminalToolView(tool: tool, chat: chat)
                     } else if tool.invokeParams != nil && tool.status == .waitForConfirmation {
                         ToolConfirmationView(tool: tool, chat: chat)
-                            .scaledPadding(8)
                     } else {
                         ToolStatusItemView(tool: tool)
                     }
@@ -64,20 +63,26 @@ struct ToolConfirmationView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 HStack {
-                    Button("Cancel") {
+                    Button(action: {
                         chat.send(.toolCallCancelled(tool.id))
+                    }) {
+                        Text("Skip")
+                            .scaledFont(.body)
                     }
-                    .scaledFont(.body)
-
-                    Button("Continue") {
+                    
+                    Button(action: {
                         chat.send(.toolCallAccepted(tool.id))
+                    }) {
+                        Text("Allow")
+                            .scaledFont(.body)
                     }
                     .buttonStyle(BorderedProminentButtonStyle())
-                    .scaledFont(.body)
+                    
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .scaledPadding(.top, 4)
             }
+            .scaledPadding(8)
             .cornerRadius(8)
             .overlay(
                 RoundedRectangle(cornerRadius: 8)

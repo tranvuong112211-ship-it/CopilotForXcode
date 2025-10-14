@@ -84,18 +84,6 @@ extension View {
         self.hoverForeground(isHovered: isHovered, defaultColor: .secondary)
     }
     
-    // MARK: - Chat Panel Input Area
-    func chatPanelInputAreaPadding(_ mode: Chat.EditorMode) -> some View {
-        var trailingPadding: CGFloat
-        switch mode {
-        case .input:
-            trailingPadding = 16
-        case .editUserMessage:
-            trailingPadding = 8
-        }
-        return self.padding(.trailing, trailingPadding)
-    }
-    
     // MARK: - Editor Mode
     
     /// Dims the view when in edit mode and provides tap/keyboard exit functionality

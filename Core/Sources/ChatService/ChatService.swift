@@ -229,15 +229,12 @@ public final class ChatService: ChatServiceType, ObservableObject {
     }
 
     public func updateToolCallStatus(toolCallId: String, status: AgentToolCall.ToolCallStatus, payload: Any? = nil) {
-        if status == .cancelled {
-            resetOngoingRequest(with: .cancelled)
-            return
-        }
-
         // Send the tool call result back to the server
-        if let toolCallRequest = self.pendingToolCallRequests[toolCallId], status == .accepted {
+        if let toolCallRequest = self.pendingToolCallRequests[toolCallId], status == .accepted || status == .cancelled {
             self.pendingToolCallRequests.removeValue(forKey: toolCallId)
-            let toolResult = LanguageModelToolConfirmationResult(result: .Accept)
+            let toolResult = LanguageModelToolConfirmationResult(
+                result: status == .accepted ? .Accept : .Dismiss
+            )
             let jsonResult = try? JSONEncoder().encode(toolResult)
             let jsonValue = (try? JSONDecoder().decode(JSONValue.self, from: jsonResult ?? Data())) ?? JSONValue.null
             toolCallRequest.completion(

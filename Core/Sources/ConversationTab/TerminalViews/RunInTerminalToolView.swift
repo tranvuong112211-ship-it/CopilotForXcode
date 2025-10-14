@@ -82,7 +82,7 @@ struct RunInTerminalToolView: View {
 
                     toolView
                 }
-                .padding(8)
+                .scaledPadding(8)
                 .cornerRadius(8)
                 .overlay(
                     RoundedRectangle(cornerRadius: 8)
@@ -123,7 +123,7 @@ struct RunInTerminalToolView: View {
                         Text(command!)
                             .textSelection(.enabled)
                             .scaledFont(size: chatFontSize, design: .monospaced)
-                            .padding(8)
+                            .scaledPadding(8)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .foregroundStyle(codeForegroundColor)
                             .background(codeBackgroundColor)
@@ -147,19 +147,23 @@ struct RunInTerminalToolView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
 
                     HStack {
-                        Button("Cancel") {
+                        Button(action: {
                             chat.send(.toolCallCancelled(tool.id))
+                        }) {
+                            Text("Skip")
+                                .scaledFont(.body)
                         }
-                        .scaledFont(.body)
-
-                        Button("Continue") {
+                        
+                        Button(action: {
                             chat.send(.toolCallAccepted(tool.id))
+                        }) {
+                            Text("Allow")
+                                .scaledFont(.body)
                         }
-                        .scaledFont(.body)
                         .buttonStyle(BorderedProminentButtonStyle())
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top, 4)
+                    .scaledPadding(.top, 4)
                 }
             }
         }

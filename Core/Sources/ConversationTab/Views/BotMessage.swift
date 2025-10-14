@@ -387,7 +387,7 @@ private struct TurnStatusView: View {
     }
     
     private var cancelStatus: some View {
-        statusView(icon: "slash.circle", iconColor: .secondary, text: "Cancelled")
+        statusView(icon: "slash.circle", iconColor: .secondary, text: "Stopped")
     }
     
     private var errorStatus: some View {
