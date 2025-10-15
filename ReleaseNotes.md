@@ -1,20 +1,23 @@
-### GitHub Copilot for Xcode 0.42.0
+### GitHub Copilot for Xcode 0.44.0
 
 **🚀 Highlights**
 
-* Support for Bring Your Own Keys (BYOK) with model providers including Azure, OpenAI, Anthropic, Gemini, Groq, and OpenRouter. See [BYOK.md](https://github.com/github/CopilotForXcode/blob/0.42.0/Docs/BYOK.md).
-* Support for custom instruction files at `.github/instructions/*.instructions.md`. See [CustomInstructions.md](https://github.com/github/CopilotForXcode/blob/0.42.0/Docs/CustomInstructions.md).
-* Support for prompt files at `.github/prompts/*.prompt.md`. See [PromptFiles.md](https://github.com/github/CopilotForXcode/blob/0.42.0/Docs/PromptFiles.md).
-* Default chat mode is now set to “Agent”.
-
+* Added support for new models in Chat: Grok Code Fast 1, Claude Sonnet 4.5, Claude Opus 4, Claude Opus 4.1 and GPT-5 mini.
+* Added support for restoring to a saved checkpoint snapshot.
+* Added support for tool selection in agent mode.
+* Added the ability to adjust the chat panel font size.
+* Added the ability to edit a previous chat message and resend it.
+* Introduced a new setting to disable the Copilot “Fix Error” button.
+* Added support for custom instructions in the Code Review feature.
 
 **💪 Improvements**
 
-* Use the current selection as chat context.
-* Add folders as chat context.
-* Shortcut to quickly fix errors in Xcode.
-* Use ↑/↓ keys to reuse previous chat context in the chat view.
+* Switched authentication to a new OAuth app "GitHub Copilot IDE Plugin".
+* Updated the chat layout to a messenger-style conversation view (user messages on the right, responses on the left).
+* Now shows a clearer, more user-friendly message when Copilot finishes responding.
+* Added support for skipping a tool call without ending the conversation.
 
 **🛠️ Bug Fixes**
 
-* Cannot copy url from Safari browser to chat view.
+* Fixed a command injection vulnerability when opening referenced chat files.
+* Resolved display issues in the chat view on macOS 26.
